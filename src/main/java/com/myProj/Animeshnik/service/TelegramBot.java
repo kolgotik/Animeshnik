@@ -1,11 +1,26 @@
 package com.myProj.Animeshnik.service;
 
 import com.myProj.Animeshnik.config.BotConfig;
+import com.myProj.Animeshnik.model.User;
+import com.myProj.Animeshnik.model.UserRepository;
+import graphql.ExecutionResult;
+import graphql.GraphQL;
+import graphql.schema.GraphQLSchema;
+import graphql.schema.StaticDataFetcher;
+import graphql.schema.idl.RuntimeWiring;
+import graphql.schema.idl.SchemaGenerator;
+import graphql.schema.idl.SchemaParser;
+import graphql.schema.idl.TypeDefinitionRegistry;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
+import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -15,10 +30,13 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import static graphql.schema.idl.RuntimeWiring.newRuntimeWiring;
 
 @Slf4j
 @Component
@@ -26,8 +44,27 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     final BotConfig config;
 
+    @Autowired
+    private AnimeService animeService;
+
+    @Autowired
+    private UserRepository userRepository;
+
     public TelegramBot(BotConfig config) {
         this.config = config;
+        List<BotCommand> botCommandList = new ArrayList<>();
+        botCommandList.add(new BotCommand("/start", "start the bot"));
+        botCommandList.add(new BotCommand("/random", "get random anime"));
+        botCommandList.add(new BotCommand("/by_genre", "get anime by genre"));
+        botCommandList.add(new BotCommand("/by_rating", "get anime by rating"));
+        botCommandList.add(new BotCommand("/help", "info on how to use this bot"));
+        botCommandList.add(new BotCommand("/settings", "set custom settings"));
+        try {
+            execute(new SetMyCommands(botCommandList, new BotCommandScopeDefault(), null));
+
+        } catch (TelegramApiException e) {
+            log.error("Error setting bot`s command list: " + e.getMessage());
+        }
     }
 
     @Override
@@ -47,8 +84,11 @@ public class TelegramBot extends TelegramLongPollingBot {
 
 
             if ("/start".equals(message)) {
-                startOnCommandReceived(update.getMessage().getChatId(), "Hi, " + update.getMessage().getChat().getFirstName());
+                registerUser(update.getMessage());
                 sendMessageButton(update.getMessage().getChatId());
+            } else if ("/random".equals(message)) {
+                String anime = animeService.getRandomAnime();
+                sendMessage(update.getMessage().getChatId(), anime);
             } else {
                 sendMessage(update.getMessage().getChatId(), "Command is not supported.");
             }
@@ -59,56 +99,16 @@ public class TelegramBot extends TelegramLongPollingBot {
             long chatId = update.getCallbackQuery().getMessage().getChatId();
 
             switch (buttonData) {
-                case "random":
+                case "/random":
                     // Do something when the "random" button is pressed
-                    String query = "query ($id: Int) {\n"
-                            + "  Media (id: $id, type: ANIME) {\n"
-                            + "    id\n"
-                            + "    title {\n"
-                            + "      romaji\n"
-                            + "      english\n"
-                            + "      native\n"
-                            + "    }\n"
-                            + "  }\n"
-                            + "}";
-
-                    Map<String, Object> variables = new LinkedHashMap<>();
-                    variables.put("id", 15125);
-
-                    String body = String.format("{\"query\":\"%s\",\"variables\":%s}", query, variables.toString());
-
-                    try {
-                        URL url = new URL("https://graphql.anilist.co");
-                        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                        conn.setRequestMethod("POST");
-                        conn.setRequestProperty("Content-Type", "application/json");
-                        conn.setRequestProperty("Accept", "application/json");
-                        conn.setDoOutput(true);
-
-                        OutputStreamWriter writer = new OutputStreamWriter(conn.getOutputStream());
-                        writer.write(body);
-                        writer.flush();
-
-                        BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                        StringBuilder response = new StringBuilder();
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            response.append(line);
-                        }
-                        reader.close();
-
-                        System.out.println(response.toString());
-                    } catch (Exception e) {
-                        log.error("Error occurred: " + e.getMessage());
-                    }
-
-
+                    String anime = animeService.getRandomAnime();
+                    sendMessage(chatId, anime);
                     break;
-                case "by_genre":
+                case "/by_genre":
                     // Do something when the "by_genre" button is pressed
                     sendMessage(chatId, "Recommend by genre is in development.");
                     break;
-                case "by_rating":
+                case "/by_rating":
                     // Do something when the "by_rating" button is pressed
                     sendMessage(chatId, "Recommend by rating is in development.");
                     break;
@@ -118,6 +118,26 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
 
 
+    }
+
+    private void registerUser(Message message) {
+
+        if (userRepository.findById(message.getChatId()).isEmpty()) {
+
+            var chatId = message.getChatId();
+            var chat = message.getChat();
+
+            User user = new User();
+
+            user.setChatId(chatId);
+            user.setFirstName(chat.getFirstName());
+            user.setLastName(chat.getLastName());
+            user.setUsername(chat.getUserName());
+            user.setRegisteredAt(new Timestamp(System.currentTimeMillis()));
+
+            userRepository.save(user);
+            log.info("User saved: " + user);
+        }
     }
 
 
@@ -132,13 +152,13 @@ public class TelegramBot extends TelegramLongPollingBot {
         sendMessage.setChatId(String.valueOf(chatId));
         sendMessage.setText("Greetings! Please select an option: ");
         InlineKeyboardButton randomButton = new InlineKeyboardButton("Random recommendation");
-        randomButton.setCallbackData("random");
+        randomButton.setCallbackData("/random");
 
         InlineKeyboardButton genreButton = new InlineKeyboardButton("Recommend by genre");
-        genreButton.setCallbackData("by_genre");
+        genreButton.setCallbackData("/by_genre");
 
         InlineKeyboardButton ratingButton = new InlineKeyboardButton("Recommend by rating");
-        ratingButton.setCallbackData("by_rating");
+        ratingButton.setCallbackData("/by_rating");
 
         List<InlineKeyboardButton> keyboardRow1 = new ArrayList<>();
         keyboardRow1.add(randomButton);
@@ -179,4 +199,6 @@ public class TelegramBot extends TelegramLongPollingBot {
             log.error("Error occurred: " + e.getMessage());
         }
     }
+
+
 }
