@@ -1,4 +1,4 @@
-package com.myProj.Animeshnik;
+package com.myProj.Animeshnik.model;
 
 public class MediaTitle {
     private String romaji;

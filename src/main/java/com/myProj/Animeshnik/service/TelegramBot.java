@@ -3,14 +3,6 @@ package com.myProj.Animeshnik.service;
 import com.myProj.Animeshnik.config.BotConfig;
 import com.myProj.Animeshnik.model.User;
 import com.myProj.Animeshnik.model.UserRepository;
-import graphql.ExecutionResult;
-import graphql.GraphQL;
-import graphql.schema.GraphQLSchema;
-import graphql.schema.StaticDataFetcher;
-import graphql.schema.idl.RuntimeWiring;
-import graphql.schema.idl.SchemaGenerator;
-import graphql.schema.idl.SchemaParser;
-import graphql.schema.idl.TypeDefinitionRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -25,18 +17,9 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-
-import static graphql.schema.idl.RuntimeWiring.newRuntimeWiring;
 
 @Slf4j
 @Component
@@ -44,11 +27,26 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     final BotConfig config;
 
+    final static String GREETING_TEXT = """
+            Konnichiwa, fellow animeshnik - san\s
+            I am the greatest Animeshnik bot, my powers are beyond reality\040
+                        
+            Use menu button or keyboard thing near the paper clip symbol to get access to my commands
+                        
+            My commands are listed below:
+
+            /random - to receive random anime
+
+            and other commands are in development :(""";
+
     @Autowired
     private AnimeService animeService;
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private VirtualKeyboardService virtualKeyboardService;
 
     public TelegramBot(BotConfig config) {
         this.config = config;
@@ -85,12 +83,13 @@ public class TelegramBot extends TelegramLongPollingBot {
 
             if ("/start".equals(message)) {
                 registerUser(update.getMessage());
-                sendMessageButton(update.getMessage().getChatId());
+                //sendMessageButton(update.getMessage().getChatId());
+                sendMessage(update.getMessage().getChatId(), GREETING_TEXT);
             } else if ("/random".equals(message)) {
                 String anime = animeService.getRandomAnime();
-                sendMessage(update.getMessage().getChatId(), anime);
+                prepareAndSendMessage(update.getMessage().getChatId(), anime);
             } else {
-                sendMessage(update.getMessage().getChatId(), "Command is not supported.");
+                prepareAndSendMessage(update.getMessage().getChatId(), "Command is not supported.");
             }
         }
         if (update.hasCallbackQuery()) {
@@ -102,15 +101,15 @@ public class TelegramBot extends TelegramLongPollingBot {
                 case "/random":
                     // Do something when the "random" button is pressed
                     String anime = animeService.getRandomAnime();
-                    sendMessage(chatId, anime);
+                    prepareAndSendMessage(chatId, anime);
                     break;
                 case "/by_genre":
                     // Do something when the "by_genre" button is pressed
-                    sendMessage(chatId, "Recommend by genre is in development.");
+                    prepareAndSendMessage(chatId, "Recommend by genre is in development.");
                     break;
                 case "/by_rating":
                     // Do something when the "by_rating" button is pressed
-                    sendMessage(chatId, "Recommend by rating is in development.");
+                    prepareAndSendMessage(chatId, "Recommend by rating is in development.");
                     break;
                 default:
                     break;
@@ -179,7 +178,10 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         sendMessage.setReplyMarkup(markup);
 
+        executeMessage(sendMessage);
+    }
 
+    private void executeMessage(SendMessage sendMessage) {
         try {
             execute(sendMessage);
 
@@ -193,12 +195,16 @@ public class TelegramBot extends TelegramLongPollingBot {
         sendMessage.setChatId(String.valueOf(chatId));
         sendMessage.setText(textToSend);
 
-        try {
-            execute(sendMessage);
-        } catch (TelegramApiException e) {
-            log.error("Error occurred: " + e.getMessage());
-        }
+        virtualKeyboardService.sendGeneralVirtualCommandKeyboard(sendMessage);
+
+        executeMessage(sendMessage);
     }
 
+    private void prepareAndSendMessage(long chatId, String textToSend) {
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(String.valueOf(chatId));
+        sendMessage.setText(textToSend);
 
+        executeMessage(sendMessage);
+    }
 }

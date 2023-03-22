@@ -4,10 +4,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
+import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -16,7 +18,12 @@ import java.util.Map;
 import java.util.Random;
 
 @Component
+@Slf4j
 public class AnimeServiceImpl implements AnimeService {
+
+    @Autowired
+    private AniListAPIv2TotalAvailablePages totalAvailablePages;
+
     @Override
     public void testGetAnime() {
         OkHttpClient client = new OkHttpClient();
@@ -102,13 +109,15 @@ public class AnimeServiceImpl implements AnimeService {
         }
         return res;
     }
+
     @Override
     public String getRandomAnime() {
         OkHttpClient client = new OkHttpClient();
         Random random = new Random();
         String url = "https://graphql.anilist.co";
 
-        int maxPage = 10000;
+        int maxPage = 16000;
+        //int maxPage = 20000;
         int randomPage = random.nextInt(maxPage) + 1;
 
         Map<String, Object> variables = new HashMap<>();
@@ -125,6 +134,7 @@ public class AnimeServiceImpl implements AnimeService {
                       }
                       episodes
                       description
+                      averageScore
                     }
                   }
                 }""";
@@ -145,6 +155,7 @@ public class AnimeServiceImpl implements AnimeService {
         String res = null;
         try (Response response = client.newCall(request).execute()) {
             String responseBody = response.body().string();
+
             res = parseJSONAnime(responseBody);
             System.out.println("API response: " + responseBody);
         } catch (Exception e) {
@@ -152,6 +163,7 @@ public class AnimeServiceImpl implements AnimeService {
         }
         return res;
     }
+
     @Override
     public String parseJSONAnime(String response) {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -159,8 +171,10 @@ public class AnimeServiceImpl implements AnimeService {
         String englishTitle;
         String description;
         String romajiTitle;
+        String title;
         int episodes;
         String result = "";
+        String averageScore;
         try {
             JsonNode rootNode = objectMapper.readTree(response);
             JsonNode mediaNode = rootNode.path("data").path("Page").path("media").get(0);
@@ -168,36 +182,48 @@ public class AnimeServiceImpl implements AnimeService {
             description = mediaNode.path("description").asText().replaceAll("<br>", "").replaceAll("<i>", "")
                     .replaceAll("</i>", "")
                     .replaceAll("</br>", "")
-                    .replaceAll("<b>","")
-                    .replaceAll("</b>", "");
+                    .replaceAll("<b>", "")
+                    .replaceAll("</b>", "")
+                    .replaceAll("<a href=\"", "")
+                    .replaceAll("\">", "")
+                    .replaceAll("</a>", "");
 
-
+            averageScore = String.valueOf(mediaNode.path("averageScore").asInt());
             episodes = mediaNode.path("episodes").asInt();
+
             JsonNode titleNode = mediaNode.path("title");
-            if (titleNode.hasNonNull("english")){
-                englishTitle = mediaNode.path("title").path("english").asText();
-                result = "Anime title: " + englishTitle + "\n"
-                        +"\n"
-                        + "Description: " + description + "\n"
-                        +"\n"
-                        + "Episodes: " + episodes;
+
+            if (titleNode.hasNonNull("english")) {
+                title = mediaNode.path("title").path("english").asText();
             } else {
-                romajiTitle = mediaNode.path("title").path("romaji").asText();
-                result = "Anime title: " + romajiTitle + "\n"
-                        +"\n"
-                        + "Description: " + description + "\n"
-                        +"\n"
-                        + "Episodes: " + episodes;
+                title = mediaNode.path("title").path("romaji").asText();
             }
+            if (!mediaNode.hasNonNull("description")) {
+                description = "Description is not available";
+            }
+            if (mediaNode.hasNonNull("averageScore")) {
+                averageScore = averageScore + " / 100";
+            } else {
+                averageScore = "Score is not available";
+
+            }
+
+            result = "Anime title: " + title + "\n"
+                    + "\n" + "Average Score: " + averageScore + "\n"
+                    + "\n"
+                    + "Description: " + description + "\n"
+                    + "\n"
+                    + "Episodes: " + episodes;
 
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
+        } catch (NullPointerException e) {
+            result = "Nani?! Something went wrong... Repeat the operation.";
+            log.error("Error occurred on parsing API response: " + e.getMessage());
         }
 
         return result;
     }
-
-
 
 }
 
