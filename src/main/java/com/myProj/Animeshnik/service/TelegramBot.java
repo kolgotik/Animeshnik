@@ -33,12 +33,15 @@ public class TelegramBot extends TelegramLongPollingBot {
     final static String GREETING_TEXT = """
             Konnichiwa, fellow animeshnik - san\s
             I am the greatest Animeshnik bot, my powers are beyond reality\040
-                        
+            
+            Press /keyboard to activate command keyboard            
             Use menu button or keyboard thing near the paper clip symbol to get access to my commands
                         
             My commands are listed below:
 
             /random - to receive random anime
+            
+            /watchlist - to get your anime
 
             and other commands are in development :(""";
 
@@ -60,6 +63,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         this.config = config;
         List<BotCommand> botCommandList = new ArrayList<>();
         botCommandList.add(new BotCommand("/start", "start the bot"));
+        botCommandList.add(new BotCommand("/keyboard", "activates command keyboard"));
         botCommandList.add(new BotCommand("/random", "get random anime"));
         botCommandList.add(new BotCommand("/by_genre", "get anime by genre"));
         botCommandList.add(new BotCommand("/by_rating", "get anime by rating"));
@@ -94,7 +98,10 @@ public class TelegramBot extends TelegramLongPollingBot {
                 registerUser(update.getMessage());
                 //sendMessageButton(update.getMessage().getChatId());
                 sendMessageNoVirtualKeyboard(update.getMessage().getChatId(), GREETING_TEXT);
-            } else if ("/random".equals(message)) {
+            }else if ("/keyboard".equals(message)){
+                sendMessageWithVirtualKeyboard(update.getMessage().getChatId(), "Keyboard!");
+            }
+            else if ("/random".equals(message)) {
                 unparsedAnime = animeService.getRandomAnime();
                 String parsedAnime = animeService.parseJSONAnime(unparsedAnime);
                 //prepareAndSendMessage(update.getMessage().getChatId(), anime);
@@ -274,7 +281,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         sendMessage.setChatId(String.valueOf(chatId));
         sendMessage.setText(textToSend);
 
-        virtualKeyboardService.sendGeneralVirtualCommandKeyboard(sendMessage);
+        virtualKeyboardService.sendGeneralVirtualCommandKeyboardWithMessage(sendMessage);
 
         executeMessage(sendMessage);
     }

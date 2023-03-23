@@ -11,7 +11,7 @@ import java.util.List;
 @Component
 public class VirtualKeyboardServiceImpl implements VirtualKeyboardService{
     @Override
-    public void sendGeneralVirtualCommandKeyboard(SendMessage sendMessage) {
+    public void sendGeneralVirtualCommandKeyboardWithMessage(SendMessage sendMessage) {
         ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
 
         List<KeyboardRow> rowList = new ArrayList<>();
@@ -26,7 +26,7 @@ public class VirtualKeyboardServiceImpl implements VirtualKeyboardService{
 
         row = new KeyboardRow();
 
-        row.add("/my_anime_list");
+        row.add("/watchlist");
 
         rowList.add(row);
 
