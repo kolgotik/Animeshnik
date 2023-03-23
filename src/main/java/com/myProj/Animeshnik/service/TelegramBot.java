@@ -1,6 +1,7 @@
 package com.myProj.Animeshnik.service;
 
 import com.myProj.Animeshnik.config.BotConfig;
+import com.myProj.Animeshnik.model.AnimeRelatedActions;
 import com.myProj.Animeshnik.model.User;
 import com.myProj.Animeshnik.model.UserRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
@@ -17,6 +19,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.nio.file.attribute.UserPrincipalNotFoundException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +51,11 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Autowired
     private VirtualKeyboardService virtualKeyboardService;
 
+    @Autowired
+    private AnimeRelatedActions animeRelatedActions;
+
+    private String unparsedAnime;
+
     public TelegramBot(BotConfig config) {
         this.config = config;
         List<BotCommand> botCommandList = new ArrayList<>();
@@ -55,6 +63,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         botCommandList.add(new BotCommand("/random", "get random anime"));
         botCommandList.add(new BotCommand("/by_genre", "get anime by genre"));
         botCommandList.add(new BotCommand("/by_rating", "get anime by rating"));
+        botCommandList.add(new BotCommand("/watchlist", "get anime added to your watchlist"));
         botCommandList.add(new BotCommand("/help", "info on how to use this bot"));
         botCommandList.add(new BotCommand("/settings", "set custom settings"));
         try {
@@ -84,39 +93,100 @@ public class TelegramBot extends TelegramLongPollingBot {
             if ("/start".equals(message)) {
                 registerUser(update.getMessage());
                 //sendMessageButton(update.getMessage().getChatId());
-                sendMessage(update.getMessage().getChatId(), GREETING_TEXT);
+                sendMessageNoVirtualKeyboard(update.getMessage().getChatId(), GREETING_TEXT);
             } else if ("/random".equals(message)) {
-                String anime = animeService.getRandomAnime();
-                prepareAndSendMessage(update.getMessage().getChatId(), anime);
+                unparsedAnime = animeService.getRandomAnime();
+                String parsedAnime = animeService.parseJSONAnime(unparsedAnime);
+                //prepareAndSendMessage(update.getMessage().getChatId(), anime);
+                addAnimeToWatchListButton(update.getMessage().getChatId(), parsedAnime);
+            } else if ("/watchlist".equals(message)) {
+                try {
+                    User user = userRepository.findById(update.getMessage().getChatId()).orElseThrow(() -> new UserPrincipalNotFoundException("User not found"));
+                    List<String> userAnimeList;
+                    if (user.getAnimeList() != null) {
+                        userAnimeList = user.getAnimeList();
+                        prepareAndSendMessage(update.getMessage().getChatId(), userAnimeList.toString());
+                    } else {
+                        prepareAndSendMessage(update.getMessage().getChatId(), "There are no anime in your list. ");
+                    }
+
+
+                } catch (UserPrincipalNotFoundException e) {
+                    log.info("User not found: " + e.getMessage());
+                    throw new RuntimeException(e);
+                }
             } else {
                 prepareAndSendMessage(update.getMessage().getChatId(), "Command is not supported.");
             }
-        }
-        if (update.hasCallbackQuery()) {
+        } else if (update.hasCallbackQuery()) {
 
-            String buttonData = update.getCallbackQuery().getData();
+            String callbackData = update.getCallbackQuery().getData();
             long chatId = update.getCallbackQuery().getMessage().getChatId();
+            long messageId = update.getCallbackQuery().getMessage().getMessageId();
 
-            switch (buttonData) {
-                case "/random":
-                    // Do something when the "random" button is pressed
-                    String anime = animeService.getRandomAnime();
-                    prepareAndSendMessage(chatId, anime);
-                    break;
-                case "/by_genre":
-                    // Do something when the "by_genre" button is pressed
-                    prepareAndSendMessage(chatId, "Recommend by genre is in development.");
-                    break;
-                case "/by_rating":
-                    // Do something when the "by_rating" button is pressed
-                    prepareAndSendMessage(chatId, "Recommend by rating is in development.");
-                    break;
-                default:
-                    break;
+            if (callbackData.equals("ADD_ANIME_TO_WATCHLIST_BUTTON")) {
+
+                String titleName = animeService.getAnimeTitleFromResponse(unparsedAnime);
+
+                try {
+                    User user = userRepository.findById(chatId).orElseThrow(() -> new UserPrincipalNotFoundException("User not found"));
+                    List<String> userAnimeList;
+                    if (user.getAnimeList() != null) {
+                        userAnimeList = user.getAnimeList();
+                        if (userAnimeList.contains(titleName)) {
+                            updateMessageText(chatId, (int) messageId, "Anime: " + titleName + " is already in watchlist, check: \n/watchlist");
+                        }
+                    }
+                    animeRelatedActions.addAnimeToWatchlist(chatId, titleName);
+
+                    updateMessageText(chatId, (int) messageId, "Added anime: " + titleName + " to your watchlist, check: \n/watchlist");
+
+
+                } catch (UserPrincipalNotFoundException e) {
+                    log.info("User not found: " + e.getMessage());
+                    throw new RuntimeException(e);
+                }
+
+            } else if ("/by_genre".equals(callbackData)) {// Do something when the "by_genre" button is pressed
+                prepareAndSendMessage(chatId, "Recommend by genre is in development.");
+            } else if ("/by_rating".equals(callbackData)) {// Do something when the "by_rating" button is pressed
+                prepareAndSendMessage(chatId, "Recommend by rating is in development.");
             }
         }
 
 
+    }
+
+    protected void updateMessageText(long chatId, int messageId, String updatedText) {
+
+        EditMessageText editMessageText = new EditMessageText();
+        editMessageText.setChatId(String.valueOf(chatId));
+        editMessageText.setMessageId(messageId);
+        editMessageText.setText(updatedText);
+        executeMessage(editMessageText);
+    }
+
+    private void addAnimeToWatchListButton(long chatId, String anime) {
+
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(String.valueOf(chatId));
+
+        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+        List<InlineKeyboardButton> rowInline = new ArrayList<>();
+
+        var addAnimeToWatchlistButton = new InlineKeyboardButton();
+        addAnimeToWatchlistButton.setText("Add anime to watchlist");
+        addAnimeToWatchlistButton.setCallbackData("ADD_ANIME_TO_WATCHLIST_BUTTON");
+
+        rowInline.add(addAnimeToWatchlistButton);
+
+        rowsInline.add(rowInline);
+
+        inlineKeyboardMarkup.setKeyboard(rowsInline);
+        sendMessage.setReplyMarkup(inlineKeyboardMarkup);
+        sendMessage.setText(anime);
+        executeMessage(sendMessage);
     }
 
     private void registerUser(Message message) {
@@ -142,7 +212,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     private void startOnCommandReceived(long chatId, String firstName) {
         String answer = "Helo, " + firstName + ", nice to meet you!";
-        sendMessage(chatId, answer);
+        sendMessageWithVirtualKeyboard(chatId, answer);
         log.info("Replied to user: " + firstName);
     }
 
@@ -190,12 +260,29 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    private void sendMessage(long chatId, String textToSend) {
+    private void executeMessage(EditMessageText editMessageText) {
+        try {
+            execute(editMessageText);
+
+        } catch (TelegramApiException e) {
+            log.error("Error occurred: " + e.getMessage());
+        }
+    }
+
+    private void sendMessageWithVirtualKeyboard(long chatId, String textToSend) {
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(String.valueOf(chatId));
         sendMessage.setText(textToSend);
 
         virtualKeyboardService.sendGeneralVirtualCommandKeyboard(sendMessage);
+
+        executeMessage(sendMessage);
+    }
+
+    private void sendMessageNoVirtualKeyboard(long chatId, String textToSend) {
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(String.valueOf(chatId));
+        sendMessage.setText(textToSend);
 
         executeMessage(sendMessage);
     }
