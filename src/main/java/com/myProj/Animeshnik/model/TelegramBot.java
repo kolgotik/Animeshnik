@@ -1,10 +1,7 @@
 package com.myProj.Animeshnik.model;
 
 import com.myProj.Animeshnik.config.BotConfig;
-import com.myProj.Animeshnik.service.AnimeDBService;
-import com.myProj.Animeshnik.service.AnimeService;
-import com.myProj.Animeshnik.service.BotUserCommandService;
-import com.myProj.Animeshnik.service.VirtualKeyboardService;
+import com.myProj.Animeshnik.service.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -28,9 +25,8 @@ import java.util.List;
 @Slf4j
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
-
-    final BotConfig config;
-
+    @Autowired
+    private BotConfig config;
     final static String GREETING_TEXT = """
             Konnichiwa, fellow animeshnik - san\s
             I am the greatest Animeshnik bot, my powers are beyond reality\040
@@ -45,33 +41,36 @@ public class TelegramBot extends TelegramLongPollingBot {
             /watchlist - to get your anime
 
             and other commands are in development :(""";
-
     @Autowired
     private AnimeService animeService;
-
     @Autowired
     private UserRepository userRepository;
-
     @Autowired
     private VirtualKeyboardService virtualKeyboardService;
-
     @Autowired
     private AnimeDBService animeDBService;
-
     @Autowired
-    private BotUserCommandService botUserCommandService;
+    private WatchlistService watchlistService;
     private String unparsedAnime;
 
-    public TelegramBot(BotConfig config) {
+    /*public TelegramBot(BotConfig config) {
         this.config = config;
-        List<BotCommand> botCommandList = botUserCommandService.getListOfCommands();
+        List<BotCommand> botCommandList = new ArrayList<>();
+        botCommandList.add(new BotCommand("/start", "start the bot"));
+        botCommandList.add(new BotCommand("/keyboard", "activates command keyboard"));
+        botCommandList.add(new BotCommand("/random", "get random anime"));
+        botCommandList.add(new BotCommand("/by_genre", "get anime by genre"));
+        botCommandList.add(new BotCommand("/by_rating", "get anime by rating"));
+        botCommandList.add(new BotCommand("/watchlist", "get anime added to your watchlist"));
+        botCommandList.add(new BotCommand("/help", "info on how to use this bot"));
+        botCommandList.add(new BotCommand("/settings", "set custom settings"));
         try {
             execute(new SetMyCommands(botCommandList, new BotCommandScopeDefault(), null));
 
         } catch (TelegramApiException e) {
             log.error("Error setting bot`s command list: " + e.getMessage());
         }
-    }
+    }*/
 
     @Override
     public String getBotUsername() {
@@ -90,24 +89,35 @@ public class TelegramBot extends TelegramLongPollingBot {
 
 
             if ("/start".equals(message)) {
+
                 registerUser(update.getMessage());
-                //sendMessageButton(update.getMessage().getChatId());
                 sendMessageNoVirtualKeyboard(update.getMessage().getChatId(), GREETING_TEXT);
+
             }else if ("/keyboard".equals(message)){
+
                 sendMessageWithVirtualKeyboard(update.getMessage().getChatId(), "Keyboard!");
+
             }
             else if ("/random".equals(message)) {
+
                 unparsedAnime = animeService.getRandomAnime();
                 String parsedAnime = animeService.parseJSONAnime(unparsedAnime);
-                //prepareAndSendMessage(update.getMessage().getChatId(), anime);
                 addAnimeToWatchListButton(update.getMessage().getChatId(), parsedAnime);
+
             } else if ("/watchlist".equals(message)) {
+
                 try {
+
                     User user = userRepository.findById(update.getMessage().getChatId()).orElseThrow(() -> new UserPrincipalNotFoundException("User not found"));
-                    List<String> userAnimeList;
+                    String userAnimeList;
+
                     if (user.getAnimeList() != null) {
-                        userAnimeList = user.getAnimeList();
+
+                        userAnimeList = watchlistService.formatAnimeList(user.getAnimeList());
+                        //userAnimeList = user.getAnimeList();
+                        log.info("parsed watchlist: " + userAnimeList);
                         prepareAndSendMessage(update.getMessage().getChatId(), userAnimeList.toString());
+
                     } else {
                         prepareAndSendMessage(update.getMessage().getChatId(), "There are no anime in your list. ");
                     }
