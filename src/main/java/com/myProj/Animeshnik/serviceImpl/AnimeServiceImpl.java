@@ -1,18 +1,20 @@
-package com.myProj.Animeshnik.service;
+package com.myProj.Animeshnik.serviceImpl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
-import com.myProj.Animeshnik.model.Anime;
+import com.myProj.Animeshnik.service.AnimeService;
+import jakarta.ws.rs.client.ResponseProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -21,14 +23,16 @@ import java.util.Random;
 @Slf4j
 public class AnimeServiceImpl implements AnimeService {
 
+    private final OkHttpClient client = new OkHttpClient();
+
+    @Value("${api.max-pages}") //~16 000
+    int maxPage;
+
     @Override
     public String getRandomAnime() {
-        OkHttpClient client = new OkHttpClient();
+
         Random random = new Random();
         String url = "https://graphql.anilist.co";
-        Anime anime = new Anime();
-        int maxPage = 16000;
-        //int maxPage = 20000;
         int randomPage = random.nextInt(maxPage) + 1;
 
         Map<String, Object> variables = new HashMap<>();
@@ -69,10 +73,9 @@ public class AnimeServiceImpl implements AnimeService {
             responseBody = response.body().string();
 
             log.info("API response: " + responseBody);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (ResponseProcessingException | IOException e) {
+            log.error("Error occurred during response processing: " + e.getMessage());
         }
-        //anime.setTitle(responseBody);
         return responseBody;
     }
 
@@ -104,9 +107,7 @@ public class AnimeServiceImpl implements AnimeService {
     public String parseJSONAnime(String anime) {
 
         int id;
-        String englishTitle;
         String description;
-        String romajiTitle;
         String title;
         int episodes;
         String result = "";
@@ -118,7 +119,9 @@ public class AnimeServiceImpl implements AnimeService {
             JsonNode rootNode = objectMapper.readTree(anime);
             JsonNode mediaNode = rootNode.path("data").path("Page").path("media").get(0);
             id = mediaNode.path("id").asInt();
-            description = mediaNode.path("description").asText().replaceAll("<br>", "").replaceAll("<i>", "")
+            description = mediaNode.path("description").asText()
+                    .replaceAll("<br>", "")
+                    .replaceAll("<i>", "")
                     .replaceAll("</i>", "")
                     .replaceAll("</br>", "")
                     .replaceAll("<b>", "")
@@ -163,50 +166,6 @@ public class AnimeServiceImpl implements AnimeService {
 
         return result;
     }
-    /*@Override
-    public String testGetAnimeString() {
-        OkHttpClient client = new OkHttpClient();
-
-        String url = "https://graphql.anilist.co";
-
-        Map<String, Object> variables = new HashMap<>();
-        variables.put("id", 1);
-
-        String query = "query ($id: Int) {\n" +
-                "  Media(id: $id, type: ANIME) {\n" +
-                "    id\n" +
-                "    title {\n" +
-                "      romaji\n" +
-                "      english\n" +
-                "    }\n" +
-                "    episodes\n" +
-                "  }\n" +
-                "}";
-
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("query", query);
-        requestBody.put("variables", variables);
-
-        Gson gson = new Gson();
-        String jsonRequestBody = gson.toJson(requestBody);
-
-        RequestBody body = RequestBody.create(jsonRequestBody, okhttp3.MediaType.parse("application/json"));
-
-        Request request = new Request.Builder()
-                .url(url)
-                .post(body)
-                .build();
-        String res = null;
-        try (Response response = client.newCall(request).execute()) {
-            String responseBody = response.body().string();
-            res = parseJSONAnime(responseBody);
-            System.out.println("API response: " + responseBody);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return res;
-    }*/
-
 }
 
 
