@@ -1,9 +1,10 @@
-package com.myProj.Animeshnik.service;
+package com.myProj.Animeshnik.model;
 
 import com.myProj.Animeshnik.config.BotConfig;
-import com.myProj.Animeshnik.model.AnimeRelatedActions;
-import com.myProj.Animeshnik.model.User;
-import com.myProj.Animeshnik.model.UserRepository;
+import com.myProj.Animeshnik.service.AnimeDBService;
+import com.myProj.Animeshnik.service.AnimeService;
+import com.myProj.Animeshnik.service.BotUserCommandService;
+import com.myProj.Animeshnik.service.VirtualKeyboardService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -55,21 +56,15 @@ public class TelegramBot extends TelegramLongPollingBot {
     private VirtualKeyboardService virtualKeyboardService;
 
     @Autowired
-    private AnimeRelatedActions animeRelatedActions;
+    private AnimeDBService animeDBService;
 
+    @Autowired
+    private BotUserCommandService botUserCommandService;
     private String unparsedAnime;
 
     public TelegramBot(BotConfig config) {
         this.config = config;
-        List<BotCommand> botCommandList = new ArrayList<>();
-        botCommandList.add(new BotCommand("/start", "start the bot"));
-        botCommandList.add(new BotCommand("/keyboard", "activates command keyboard"));
-        botCommandList.add(new BotCommand("/random", "get random anime"));
-        botCommandList.add(new BotCommand("/by_genre", "get anime by genre"));
-        botCommandList.add(new BotCommand("/by_rating", "get anime by rating"));
-        botCommandList.add(new BotCommand("/watchlist", "get anime added to your watchlist"));
-        botCommandList.add(new BotCommand("/help", "info on how to use this bot"));
-        botCommandList.add(new BotCommand("/settings", "set custom settings"));
+        List<BotCommand> botCommandList = botUserCommandService.getListOfCommands();
         try {
             execute(new SetMyCommands(botCommandList, new BotCommandScopeDefault(), null));
 
@@ -144,7 +139,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                             updateMessageText(chatId, (int) messageId, "Anime: " + titleName + " is already in watchlist, check: \n/watchlist");
                         }
                     }
-                    animeRelatedActions.addAnimeToWatchlist(chatId, titleName);
+                    animeDBService.addAnimeToWatchlist(chatId, titleName);
 
                     updateMessageText(chatId, (int) messageId, "Added anime: " + titleName + " to your watchlist, check: \n/watchlist");
 

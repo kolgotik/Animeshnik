@@ -1,7 +1,6 @@
-package com.myProj.Animeshnik.service;
+package com.myProj.Animeshnik.serviceImpl;
 
-import com.myProj.Animeshnik.model.Anime;
-import com.myProj.Animeshnik.model.AnimeRelatedActions;
+import com.myProj.Animeshnik.service.AnimeDBService;
 import com.myProj.Animeshnik.model.User;
 import com.myProj.Animeshnik.model.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -16,14 +15,9 @@ import java.util.List;
 
 @Service
 @Slf4j
-public class AnimeRelatedActionsHandler implements AnimeRelatedActions {
+public class AnimeDBServiceImpl implements AnimeDBService {
     @Autowired
     private UserRepository userRepository;
-
-    @Override
-    public void addAnimeToWatchlist(Long chatId, Anime animeTitle) {
-
-    }
 
     @Override
     @Transactional

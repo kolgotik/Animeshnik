@@ -1,5 +1,6 @@
-package com.myProj.Animeshnik.service;
+package com.myProj.Animeshnik.serviceImpl;
 
+import com.myProj.Animeshnik.service.VirtualKeyboardService;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
@@ -9,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Component
-public class VirtualKeyboardServiceImpl implements VirtualKeyboardService{
+public class VirtualKeyboardServiceImpl implements VirtualKeyboardService {
     @Override
     public void sendGeneralVirtualCommandKeyboardWithMessage(SendMessage sendMessage) {
         ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
