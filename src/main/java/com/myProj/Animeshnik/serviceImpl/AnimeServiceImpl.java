@@ -15,9 +15,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 @Slf4j
@@ -101,6 +101,25 @@ public class AnimeServiceImpl implements AnimeService {
         }
 
         return title;
+    }
+
+    @Override
+    public List<String> retrievedAnimeList(String anime) {
+        List<String> list = new ArrayList<>();
+        list.add(anime);
+        return list;
+    }
+
+    @Override
+    public String extractAnimeTitle(String anime) {
+        String regex = "Anime title:\\s*(.*?)\\s*Average Score:";
+        Pattern pattern = Pattern.compile(regex, Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(anime);
+        String extractedTitle = "";
+        if (matcher.find()) {
+            extractedTitle = matcher.group(1);
+        }
+        return extractedTitle;
     }
 
     @Override
