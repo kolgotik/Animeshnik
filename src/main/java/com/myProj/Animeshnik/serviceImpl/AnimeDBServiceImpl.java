@@ -40,7 +40,6 @@ public class AnimeDBServiceImpl implements AnimeDBService {
 
             userRepository.save(user);
 
-            log.info("Animes: " + user.getAnimeList().toString());
         } catch (UserPrincipalNotFoundException e) {
             log.error("Entity/User not found: " + e.getMessage());
             throw new EntityNotFoundException(e);

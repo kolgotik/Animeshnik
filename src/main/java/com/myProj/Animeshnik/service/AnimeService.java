@@ -1,7 +1,6 @@
 package com.myProj.Animeshnik.service;
 
-import com.myProj.Animeshnik.model.Anime;
-import okhttp3.Response;
+import java.util.List;
 
 public interface AnimeService {
 
@@ -13,5 +12,9 @@ public interface AnimeService {
     String getRandomAnime();
 
     String getAnimeTitleFromResponse(String anime);
+
+    List<String> retrievedAnimeList(String anime);
+
+    String extractAnimeTitle(String anime);
 
 }
