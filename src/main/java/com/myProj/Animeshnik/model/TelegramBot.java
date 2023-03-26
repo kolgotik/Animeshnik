@@ -136,12 +136,16 @@ public class TelegramBot extends TelegramLongPollingBot {
                     if (user.getAnimeList() != null) {
                         userAnimeList = user.getAnimeList();
                         if (userAnimeList.contains(extractedTitle)) {
-                            executeMessage(botCommandService.updateMessageText(chatId, (int) messageId, "Anime: " + extractedTitle + " is already in watchlist, check: \n/watchlist"));
+                            EditMessageText messageToExecute = botCommandService.updateMessageText(chatId, (int) messageId,
+                                    "Anime: " + extractedTitle + " is already in watchlist, check: \n/watchlist");
+                            executeMessage(messageToExecute);
                         }
                     }
                     animeDBService.addAnimeToWatchlist(chatId, extractedTitle);
 
-                    executeMessage(botCommandService.updateMessageText(chatId, (int) messageId, "Added anime: " + extractedTitle + " to your watchlist, check: \n/watchlist"));
+                    EditMessageText messageToExecute = botCommandService.updateMessageText(chatId, (int) messageId,
+                            "Added anime: " + extractedTitle + " to your watchlist, check: \n/watchlist");
+                    executeMessage(messageToExecute);
 
 
                 } catch (UserPrincipalNotFoundException e) {
