@@ -31,14 +31,14 @@ public class TelegramBot extends TelegramLongPollingBot {
     final static String GREETING_TEXT = """
             Konnichiwa, fellow animeshnik - san\s
             I am the greatest Animeshnik bot, my powers are beyond reality\040
-            
+                        
             Press /keyboard to activate command keyboard            
             Use menu button or keyboard thing near the paper clip symbol to get access to my commands
                         
             My commands are listed below:
 
             /random - to receive absolutely random japanese animation
-            
+                        
             /watchlist - to get your anime
 
             and other commands are in development :(""";
@@ -79,11 +79,10 @@ public class TelegramBot extends TelegramLongPollingBot {
                 botCommandService.registerUser(update.getMessage(), userRepository);
                 executeMessage(virtualKeyboardService.sendMessageNoVirtualKeyboard(update.getMessage().getChatId(), GREETING_TEXT));
 
-            }else if ("/keyboard".equals(message)){
+            } else if ("/keyboard".equals(message)) {
                 executeMessage(virtualKeyboardService.sendMessageWithVirtualKeyboard(update.getMessage().getChatId(), "Keyboard!",
                         virtualKeyboardService));
-            }
-            else if ("/random".equals(message)) {
+            } else if ("/random".equals(message)) {
 
                 unparsedAnime = animeService.getRandomAnime();
                 String parsedAnime = animeService.parseJSONAnime(unparsedAnime);
@@ -102,7 +101,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                     if (user != null && user.getAnimeList() != null) {
                         userAnimeList = user.getAnimeList();
                         formattedList = watchlistService.formatAnimeList(userAnimeList);
-                        if (formattedList.isEmpty()){
+                        if (formattedList.isEmpty()) {
                             formattedList = "There are no anime in your list.";
                         }
                         log.info("parsed watchlist: " + formattedList);
@@ -116,7 +115,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                 } catch (UserPrincipalNotFoundException e) {
                     log.error("User not found: " + e.getMessage());
                     prepareAndSendMessage(update.getMessage().getChatId(), """
-                                You are not yet registered, press /start to register, then you'll be able to add anime.""");
+                            You are not yet registered, press /start to register, then you'll be able to add anime.""");
                     throw new RuntimeException(e);
                 }
             } else {
@@ -136,21 +135,26 @@ public class TelegramBot extends TelegramLongPollingBot {
                 try {
                     User user = userRepository.findById(chatId).orElseThrow(() -> new UserPrincipalNotFoundException("User not found"));
                     List<String> userAnimeList;
+
                     if (user.getAnimeList() != null) {
                         userAnimeList = user.getAnimeList();
-                        if (userAnimeList.contains(extractedTitle)) {
+                        if (!userAnimeList.contains(extractedTitle)) {
+                            animeDBService.addAnimeToWatchlist(chatId, extractedTitle);
                             EditMessageText messageToExecute = botCommandService.updateMessageText(chatId, (int) messageId,
-                                    "Anime: " + extractedTitle + " is already in watchlist, check: \n/watchlist");
+                                    "Added anime: " + extractedTitle + " to your watchlist, check: \n/watchlist");
                             executeMessage(messageToExecute);
+                        } else {
+                            EditMessageText animeDuplicateMsg = botCommandService.updateMessageText(chatId, (int) messageId,
+                                    "Anime: " + extractedTitle + " is already in watchlist, check: \n/watchlist");
+                            executeMessage(animeDuplicateMsg);
                         }
+                    } else {
+                        user.setAnimeList(new ArrayList<>());
+                        animeDBService.addAnimeToWatchlist(chatId, extractedTitle);
+                        EditMessageText messageToExecute = botCommandService.updateMessageText(chatId, (int) messageId,
+                                "Added anime: " + extractedTitle + " to your watchlist, check: \n/watchlist");
+                        executeMessage(messageToExecute);
                     }
-                    animeDBService.addAnimeToWatchlist(chatId, extractedTitle);
-
-                    EditMessageText messageToExecute = botCommandService.updateMessageText(chatId, (int) messageId,
-                            "Added anime: " + extractedTitle + " to your watchlist, check: \n/watchlist");
-                    executeMessage(messageToExecute);
-
-
                 } catch (UserPrincipalNotFoundException e) {
                     log.info("User not found: " + e.getMessage());
                     throw new RuntimeException(e);
@@ -183,6 +187,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             log.error("Error occurred: " + e.getMessage());
         }
     }
+
     private void prepareAndSendMessage(long chatId, String textToSend) {
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(String.valueOf(chatId));
