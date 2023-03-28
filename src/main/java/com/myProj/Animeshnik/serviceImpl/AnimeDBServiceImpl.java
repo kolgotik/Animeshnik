@@ -30,6 +30,9 @@ public class AnimeDBServiceImpl implements AnimeDBService {
             List<String> animeList;
             if (user.getAnimeList() != null) {
                 animeList = user.getAnimeList();
+                if(user.getAnimeList().contains(anime)){
+                    return;
+                }
                 animeList.add(anime);
             } else {
                 animeList = new ArrayList<>();
