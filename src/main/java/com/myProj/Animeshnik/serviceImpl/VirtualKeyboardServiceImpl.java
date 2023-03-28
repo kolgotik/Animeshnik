@@ -34,4 +34,22 @@ public class VirtualKeyboardServiceImpl implements VirtualKeyboardService {
         replyKeyboardMarkup.setKeyboard(rowList);
         sendMessage.setReplyMarkup(replyKeyboardMarkup);
     }
+
+    @Override
+    public SendMessage sendMessageWithVirtualKeyboard(long chatId, String textToSend, VirtualKeyboardService virtualKeyboardService) {
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(String.valueOf(chatId));
+        sendMessage.setText(textToSend);
+
+        virtualKeyboardService.sendGeneralVirtualCommandKeyboardWithMessage(sendMessage);
+        return sendMessage;
+    }
+
+    @Override
+    public SendMessage sendMessageNoVirtualKeyboard(long chatId, String textToSend) {
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(String.valueOf(chatId));
+        sendMessage.setText(textToSend);
+        return sendMessage;
+    }
 }

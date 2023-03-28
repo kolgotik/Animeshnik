@@ -37,7 +37,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                         
             My commands are listed below:
 
-            /random - to receive random anime
+            /random - to receive absolutely random japanese animation
             
             /watchlist - to get your anime
 
@@ -56,7 +56,6 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Autowired
     private BotCommandService botCommandService;
     private String unparsedAnime;
-    private List<String> animeList = new ArrayList<>();
 
     @Override
     public String getBotUsername() {
@@ -77,33 +76,35 @@ public class TelegramBot extends TelegramLongPollingBot {
 
             if ("/start".equals(message)) {
 
-                registerUser(update.getMessage());
-                sendMessageNoVirtualKeyboard(update.getMessage().getChatId(), GREETING_TEXT);
+                botCommandService.registerUser(update.getMessage(), userRepository);
+                executeMessage(virtualKeyboardService.sendMessageNoVirtualKeyboard(update.getMessage().getChatId(), GREETING_TEXT));
 
             }else if ("/keyboard".equals(message)){
-
-                sendMessageWithVirtualKeyboard(update.getMessage().getChatId(), "Keyboard!");
-
+                executeMessage(virtualKeyboardService.sendMessageWithVirtualKeyboard(update.getMessage().getChatId(), "Keyboard!",
+                        virtualKeyboardService));
             }
             else if ("/random".equals(message)) {
 
                 unparsedAnime = animeService.getRandomAnime();
                 String parsedAnime = animeService.parseJSONAnime(unparsedAnime);
 
-                addAnimeToWatchListButton(update.getMessage().getChatId(), parsedAnime);
-
+                executeMessage(watchlistService.addAnimeToWatchListButton(update.getMessage().getChatId(),
+                        parsedAnime));
 
             } else if ("/watchlist".equals(message)) {
 
+                List<String> userAnimeList;
+                String formattedList;
                 try {
 
                     User user = userRepository.findById(update.getMessage().getChatId()).orElseThrow(() -> new UserPrincipalNotFoundException("User not found"));
-                    List<String> userAnimeList;
-                    String formattedList;
-                    if (user.getAnimeList() != null) {
 
+                    if (user != null && user.getAnimeList() != null) {
                         userAnimeList = user.getAnimeList();
                         formattedList = watchlistService.formatAnimeList(userAnimeList);
+                        if (formattedList.isEmpty()){
+                            formattedList = "There are no anime in your list.";
+                        }
                         log.info("parsed watchlist: " + formattedList);
                         prepareAndSendMessage(update.getMessage().getChatId(), formattedList);
 
@@ -113,7 +114,9 @@ public class TelegramBot extends TelegramLongPollingBot {
 
 
                 } catch (UserPrincipalNotFoundException e) {
-                    log.info("User not found: " + e.getMessage());
+                    log.error("User not found: " + e.getMessage());
+                    prepareAndSendMessage(update.getMessage().getChatId(), """
+                                You are not yet registered, press /start to register, then you'll be able to add anime.""");
                     throw new RuntimeException(e);
                 }
             } else {
@@ -163,100 +166,6 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     }
 
-    /*protected void updateMessageText(long chatId, int messageId, String updatedText) {
-
-        EditMessageText editMessageText = new EditMessageText();
-        editMessageText.setChatId(String.valueOf(chatId));
-        editMessageText.setMessageId(messageId);
-        editMessageText.setText(updatedText);
-        executeMessage(editMessageText);
-    }*/
-
-    private void addAnimeToWatchListButton(long chatId, String anime) {
-
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(String.valueOf(chatId));
-
-        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
-        List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
-        List<InlineKeyboardButton> rowInline = new ArrayList<>();
-
-        var addAnimeToWatchlistButton = new InlineKeyboardButton();
-        addAnimeToWatchlistButton.setText("Add anime to watchlist");
-        addAnimeToWatchlistButton.setCallbackData("ADD_ANIME_TO_WATCHLIST_BUTTON");
-
-        rowInline.add(addAnimeToWatchlistButton);
-
-        rowsInline.add(rowInline);
-
-        inlineKeyboardMarkup.setKeyboard(rowsInline);
-        sendMessage.setReplyMarkup(inlineKeyboardMarkup);
-        sendMessage.setText(anime);
-        executeMessage(sendMessage);
-    }
-
-    private void registerUser(Message message) {
-
-        if (userRepository.findById(message.getChatId()).isEmpty()) {
-
-            var chatId = message.getChatId();
-            var chat = message.getChat();
-
-            User user = new User();
-
-            user.setChatId(chatId);
-            user.setFirstName(chat.getFirstName());
-            user.setLastName(chat.getLastName());
-            user.setUsername(chat.getUserName());
-            user.setRegisteredAt(new Timestamp(System.currentTimeMillis()));
-
-            userRepository.save(user);
-            log.info("User saved: " + user);
-        }
-    }
-
-
-    private void startOnCommandReceived(long chatId, String firstName) {
-        String answer = "Helo, " + firstName + ", nice to meet you!";
-        sendMessageWithVirtualKeyboard(chatId, answer);
-        log.info("Replied to user: " + firstName);
-    }
-
-    private void sendMessageButton(long chatId) {
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(String.valueOf(chatId));
-        sendMessage.setText("Greetings! Please select an option: ");
-        InlineKeyboardButton randomButton = new InlineKeyboardButton("Random recommendation");
-        randomButton.setCallbackData("/random");
-
-        InlineKeyboardButton genreButton = new InlineKeyboardButton("Recommend by genre");
-        genreButton.setCallbackData("/by_genre");
-
-        InlineKeyboardButton ratingButton = new InlineKeyboardButton("Recommend by rating");
-        ratingButton.setCallbackData("/by_rating");
-
-        List<InlineKeyboardButton> keyboardRow1 = new ArrayList<>();
-        keyboardRow1.add(randomButton);
-
-        List<InlineKeyboardButton> keyboardRow2 = new ArrayList<>();
-        keyboardRow2.add(genreButton);
-
-        List<InlineKeyboardButton> keyboardRow3 = new ArrayList<>();
-        keyboardRow3.add(ratingButton);
-
-        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-        keyboard.add(keyboardRow1);
-        keyboard.add(keyboardRow2);
-        keyboard.add(keyboardRow3);
-
-        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
-        markup.setKeyboard(keyboard);
-
-        sendMessage.setReplyMarkup(markup);
-
-        executeMessage(sendMessage);
-    }
-
     private void executeMessage(SendMessage sendMessage) {
         try {
             execute(sendMessage);
@@ -274,25 +183,6 @@ public class TelegramBot extends TelegramLongPollingBot {
             log.error("Error occurred: " + e.getMessage());
         }
     }
-
-    private void sendMessageWithVirtualKeyboard(long chatId, String textToSend) {
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(String.valueOf(chatId));
-        sendMessage.setText(textToSend);
-
-        virtualKeyboardService.sendGeneralVirtualCommandKeyboardWithMessage(sendMessage);
-
-        executeMessage(sendMessage);
-    }
-
-    private void sendMessageNoVirtualKeyboard(long chatId, String textToSend) {
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(String.valueOf(chatId));
-        sendMessage.setText(textToSend);
-
-        executeMessage(sendMessage);
-    }
-
     private void prepareAndSendMessage(long chatId, String textToSend) {
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(String.valueOf(chatId));
