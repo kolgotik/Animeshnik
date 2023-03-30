@@ -80,6 +80,50 @@ public class AnimeServiceImpl implements AnimeService {
     }
 
     @Override
+    public String getAnimeDescription(String animeName) {
+        String url = "https://graphql.anilist.co";
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("title", animeName);
+
+        String query = """
+            query ($title: String) {
+              Media(search: $title, type: ANIME) {
+                description
+              }
+            }""";
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("query", query);
+        requestBody.put("variables", variables);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        String jsonRequestBody = null;
+        try {
+            jsonRequestBody = objectMapper.writeValueAsString(requestBody);
+        } catch (JsonProcessingException e) {
+            log.error("Error occurred during request body processing: " + e.getMessage());
+        }
+
+        RequestBody body = RequestBody.create(jsonRequestBody, okhttp3.MediaType.parse("application/json"));
+
+        Request request = new Request.Builder()
+                .url(url)
+                .post(body)
+                .build();
+
+        String responseBody = null;
+        try (Response response = client.newCall(request).execute()) {
+            responseBody = response.body().string();
+            log.info("API response: " + responseBody);
+        } catch (ResponseProcessingException | IOException e) {
+            log.error("Error occurred during response processing: " + e.getMessage());
+        }
+
+        return responseBody;
+    }
+
+    @Override
     public String getAnimeTitleFromResponse(String anime) {
 
         String title;

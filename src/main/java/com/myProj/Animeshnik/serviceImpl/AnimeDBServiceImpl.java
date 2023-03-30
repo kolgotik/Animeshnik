@@ -1,5 +1,6 @@
 package com.myProj.Animeshnik.serviceImpl;
 
+import com.myProj.Animeshnik.DAO.UserDAO;
 import com.myProj.Animeshnik.service.AnimeDBService;
 import com.myProj.Animeshnik.model.User;
 import com.myProj.Animeshnik.model.UserRepository;
@@ -19,6 +20,9 @@ public class AnimeDBServiceImpl implements AnimeDBService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private UserDAO userDAO;
+
     @Override
     @Transactional
     public void addAnimeToWatchlist(Long chatId, String anime) {
@@ -37,6 +41,32 @@ public class AnimeDBServiceImpl implements AnimeDBService {
             } else {
                 animeList = new ArrayList<>();
                 animeList.add(anime);
+            }
+
+            user.setAnimeList(animeList);
+
+            userRepository.save(user);
+
+        } catch (UserPrincipalNotFoundException e) {
+            log.error("Entity/User not found: " + e.getMessage());
+            throw new EntityNotFoundException(e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void removeAnimeFromWatchlist(User user, String animeTitle, long chatId) {
+        try {
+            user = userRepository.findById(chatId)
+                    .orElseThrow(() -> new UserPrincipalNotFoundException("User not found"));
+            List<String> animeList = null;
+            if (user.getAnimeList() != null) {
+                animeList = user.getAnimeList();
+                if(user.getAnimeList().contains(animeTitle)){
+                    animeList.remove(animeTitle);
+                    log.info("Removed " + animeTitle);
+                }
+
             }
 
             user.setAnimeList(animeList);
