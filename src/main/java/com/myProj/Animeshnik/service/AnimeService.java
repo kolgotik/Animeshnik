@@ -11,6 +11,8 @@ public interface AnimeService {
 
     String getRandomAnime();
 
+    String getAnimeDescription(String animeName);
+
     String getAnimeTitleFromResponse(String anime);
 
     List<String> retrievedAnimeList(String anime);

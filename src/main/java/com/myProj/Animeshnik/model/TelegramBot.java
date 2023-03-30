@@ -1,5 +1,6 @@
 package com.myProj.Animeshnik.model;
 
+import com.myProj.Animeshnik.DAO.UserDAO;
 import com.myProj.Animeshnik.config.BotConfig;
 import com.myProj.Animeshnik.service.*;
 import lombok.Getter;
@@ -55,6 +56,8 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     @Autowired
     private BotCommandService botCommandService;
+    @Autowired
+    private UserDAO userDAO;
     private String unparsedAnime;
 
     @Override
@@ -87,8 +90,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                 unparsedAnime = animeService.getRandomAnime();
                 String parsedAnime = animeService.parseJSONAnime(unparsedAnime);
 
-                executeMessage(watchlistService.addAnimeToWatchListButton(update.getMessage().getChatId(),
-                        parsedAnime));
+                executeMessage(watchlistService.addAnimeToWatchListButton(update.getMessage().getChatId(), parsedAnime));
 
             } else if ("/watchlist".equals(message)) {
 
@@ -105,8 +107,8 @@ public class TelegramBot extends TelegramLongPollingBot {
                             formattedList = "There are no anime in your list.";
                         }
                         log.info("parsed watchlist: " + formattedList);
-                        prepareAndSendMessage(update.getMessage().getChatId(), formattedList);
-
+                        //prepareAndSendMessage(update.getMessage().getChatId(), formattedList);
+                        executeMessage(watchlistService.animeList(update.getMessage().getChatId(), userAnimeList, user));
                     } else {
                         prepareAndSendMessage(update.getMessage().getChatId(), "There are no anime in your list. ");
                     }
@@ -122,10 +124,11 @@ public class TelegramBot extends TelegramLongPollingBot {
                 prepareAndSendMessage(update.getMessage().getChatId(), "Command is not supported.");
             }
         } else if (update.hasCallbackQuery()) {
-
             String callbackData = update.getCallbackQuery().getData();
             long chatId = update.getCallbackQuery().getMessage().getChatId();
             long messageId = update.getCallbackQuery().getMessage().getMessageId();
+
+            User userForWatchlistActions = userRepository.findById(chatId).orElseThrow();
 
             if (callbackData.equals("ADD_ANIME_TO_WATCHLIST_BUTTON")) {
 
@@ -164,7 +167,77 @@ public class TelegramBot extends TelegramLongPollingBot {
                 prepareAndSendMessage(chatId, "Recommend by genre is in development.");
             } else if ("/by_rating".equals(callbackData)) {// Do something when the "by_rating" button is pressed
                 prepareAndSendMessage(chatId, "Recommend by rating is in development.");
+
             }
+            for (String callback : userForWatchlistActions.getAnimeList()) {
+
+                User user = null;
+
+                if (callbackData.equals(callback)) {
+
+                    String animeTitle = callbackData;
+
+                    try {
+                        user = userRepository.findById(chatId).orElseThrow(() -> new UserPrincipalNotFoundException("User not found"));
+                        log.info("Anime: " + animeTitle);
+
+                        EditMessageText editMessageText;
+
+                        if (animeTitle != null) {
+                            editMessageText = watchlistService.animeDetails(chatId, animeTitle, (int) messageId);
+                        } else {
+                            editMessageText = new EditMessageText();
+                            editMessageText.setChatId(String.valueOf(chatId));
+                            editMessageText.setMessageId((int) messageId);
+                            editMessageText.setText("Error: Could not extract anime title from message");
+                        }
+                        executeMessage(editMessageText);
+                    } catch (UserPrincipalNotFoundException e) {
+                        log.error("User not found: " + e.getMessage());
+                        throw new RuntimeException(e);
+                    }
+                }
+
+            }
+
+            List<String> animeList = userForWatchlistActions.getAnimeList();
+            List<String> listForRemove = new ArrayList<>();
+
+            for (String anime : animeList) {
+                String modifiedTitle = "REMOVE" + anime;
+                listForRemove.add(modifiedTitle);
+            }
+            for (String animeToRemove : listForRemove) {
+                if (callbackData.equals(animeToRemove)) {
+
+                    animeDBService.removeAnimeFromWatchlist(userForWatchlistActions, animeToRemove.replace("REMOVE", ""), chatId);
+                    List<String> userAnimeList = userDAO.getUserListFromDB(userForWatchlistActions, userRepository, chatId);
+                    userForWatchlistActions.setAnimeList(userAnimeList);
+                    executeMessage(watchlistService.animeList(chatId, userAnimeList, userForWatchlistActions, messageId));
+
+                }
+            }
+
+            if (callbackData.equals("BACK_TO_LIST")){
+                executeMessage(watchlistService.animeList(chatId, userForWatchlistActions.getAnimeList(), userForWatchlistActions, messageId));
+            }
+
+            List<String> listForDescription = new ArrayList<>();
+
+            for (String anime : animeList) {
+                String modifiedTitle = "DESCRIPTION" + anime;
+                listForDescription.add(modifiedTitle);
+            }
+            for (String animeToGetDescr : listForDescription) {
+                if (callbackData.equals(animeToGetDescr)) {
+
+                    String rawDescription = animeService.getAnimeDescription(animeToGetDescr.replace("DESCRIPTION",""));
+                    String parsedDescription = watchlistService.parseJSONDescription(rawDescription);
+                    executeMessage(botCommandService.updateMessageText(chatId, (int) messageId, parsedDescription));
+                    log.info("Retrieved description:" + parsedDescription);
+                }
+            }
+
         }
 
 
