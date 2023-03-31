@@ -18,4 +18,6 @@ public interface WatchlistService {
     EditMessageText animeDetails(long chatId, String anime, int messageId);
 
     EditMessageText parseJSONDescription(long chatId, String anime, long messageId);
+
+    EditMessageText addYesNoButton(long chatId, String anime, long messageId);
 }

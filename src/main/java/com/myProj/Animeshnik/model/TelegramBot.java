@@ -59,6 +59,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Autowired
     private UserDAO userDAO;
     private String unparsedAnime;
+    private String anime;
 
     @Override
     public String getBotUsername() {
@@ -209,33 +210,47 @@ public class TelegramBot extends TelegramLongPollingBot {
             }
             for (String animeToRemove : listForRemove) {
                 if (callbackData.equals(animeToRemove)) {
-
-                    animeDBService.removeAnimeFromWatchlist(userForWatchlistActions, animeToRemove.replace("REMOVE", ""), chatId);
-                    List<String> userAnimeList = userDAO.getUserListFromDB(userForWatchlistActions, userRepository, chatId);
-                    userForWatchlistActions.setAnimeList(userAnimeList);
-                    executeMessage(watchlistService.animeList(chatId, userAnimeList, userForWatchlistActions, messageId));
+                    anime = animeToRemove.replace("REMOVE", "");
+                    executeMessage(watchlistService.addYesNoButton(chatId, anime, messageId));
 
                 }
+            }
+            if (callbackData.equals("YES")){
+                animeDBService.removeAnimeFromWatchlist(userForWatchlistActions, anime.replace("REMOVE", ""), chatId);
+                List<String> userAnimeList = userDAO.getUserListFromDB(userForWatchlistActions, userRepository, chatId);
+                userForWatchlistActions.setAnimeList(userAnimeList);
+                executeMessage(watchlistService.animeList(chatId, userAnimeList, userForWatchlistActions, messageId));
             }
 
             if (callbackData.equals("BACK_TO_LIST")){
                 executeMessage(watchlistService.animeList(chatId, userForWatchlistActions.getAnimeList(), userForWatchlistActions, messageId));
             }
 
+            if (callbackData.equals("BACK_TO_OPTIONS")){
+                executeMessage(watchlistService.animeDetails(chatId, anime, (int) messageId));
+            }
+
+            if (callbackData.equals("NO")){
+                executeMessage(watchlistService.animeDetails(chatId, anime, (int) messageId));
+            }
+
+
             List<String> listForDescription = new ArrayList<>();
 
             for (String anime : animeList) {
                 String modifiedTitle = "DESCRIPTION" + anime;
                 listForDescription.add(modifiedTitle);
+
             }
             for (String animeToGetDescr : listForDescription) {
                 if (callbackData.equals(animeToGetDescr)) {
-
+                    anime = animeToGetDescr.replace("DESCRIPTION","");
                     String rawDescription = animeService.getAnimeDescription(animeToGetDescr.replace("DESCRIPTION",""));
                     //String parsedDescription = watchlistService.parseJSONDescription(rawDescription);
                     executeMessage(watchlistService.parseJSONDescription(chatId, rawDescription, messageId));
                     log.info("Retrieved description:" + rawDescription);
                 }
+
             }
 
         }
