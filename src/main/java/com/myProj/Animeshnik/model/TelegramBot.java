@@ -232,9 +232,9 @@ public class TelegramBot extends TelegramLongPollingBot {
                 if (callbackData.equals(animeToGetDescr)) {
 
                     String rawDescription = animeService.getAnimeDescription(animeToGetDescr.replace("DESCRIPTION",""));
-                    String parsedDescription = watchlistService.parseJSONDescription(rawDescription);
-                    executeMessage(botCommandService.updateMessageText(chatId, (int) messageId, parsedDescription));
-                    log.info("Retrieved description:" + parsedDescription);
+                    //String parsedDescription = watchlistService.parseJSONDescription(rawDescription);
+                    executeMessage(watchlistService.parseJSONDescription(chatId, rawDescription, messageId));
+                    log.info("Retrieved description:" + rawDescription);
                 }
             }
 
