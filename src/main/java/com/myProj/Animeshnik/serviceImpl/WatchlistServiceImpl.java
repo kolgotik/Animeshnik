@@ -94,6 +94,10 @@ public class WatchlistServiceImpl implements WatchlistService {
 
         watchlist = user.getAnimeList();
 
+        if (user.getAnimeList().isEmpty()){
+            message.setText("There are no anime in your list.");
+        }
+
         for (String anime : watchlist) {
             var animeTitleButton = new InlineKeyboardButton();
             animeTitleButton.setText(anime);
@@ -112,7 +116,7 @@ public class WatchlistServiceImpl implements WatchlistService {
     public EditMessageText animeDetails(long chatId, String anime, int messageId) {
         EditMessageText message = new EditMessageText();
         message.setChatId(String.valueOf(chatId));
-        message.setText("Here are some details about anime: " + anime);
+        message.setText("Choose an option for anime: " + anime);
         message.setMessageId(messageId);
 
         List<InlineKeyboardButton> buttons = new ArrayList<>();
@@ -149,8 +153,15 @@ public class WatchlistServiceImpl implements WatchlistService {
         List<InlineKeyboardButton> buttons = new ArrayList<>();
         var backButton = new InlineKeyboardButton();
         backButton.setText("Back to list");
-        backButton.setCallbackData("BACK_TO_LIST"); // This value does not need to be URL-encoded
+        backButton.setCallbackData("BACK_TO_LIST");
+
+
+        var backToOptionsButton = new InlineKeyboardButton();
+        backToOptionsButton.setText("Back to options");
+        backToOptionsButton.setCallbackData("BACK_TO_OPTIONS");
+
         buttons.add(backButton);
+        buttons.add(backToOptionsButton);
 
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
 
@@ -178,6 +189,32 @@ public class WatchlistServiceImpl implements WatchlistService {
         editMessageText.setText(description);
         markup.setKeyboard(List.of(buttons));
 
+        editMessageText.setReplyMarkup(markup);
+
+        return editMessageText;
+    }
+
+    @Override
+    public EditMessageText addYesNoButton(long chatId, String anime, long messageId) {
+        EditMessageText editMessageText = new EditMessageText();
+        editMessageText.setChatId(String.valueOf(chatId));
+        editMessageText.setText("Are sure you want to disintegrate " + anime + " from your list?");
+        editMessageText.setMessageId((int) messageId);
+
+        List<InlineKeyboardButton> buttons = new ArrayList<>();
+        var yesButton = new InlineKeyboardButton();
+        yesButton.setText("Yes");
+        yesButton.setCallbackData("YES");
+
+        var noButton = new InlineKeyboardButton();
+        noButton.setText("No");
+        noButton.setCallbackData("NO");
+
+        buttons.add(yesButton);
+        buttons.add(noButton);
+
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        markup.setKeyboard(List.of(buttons));
         editMessageText.setReplyMarkup(markup);
 
         return editMessageText;
