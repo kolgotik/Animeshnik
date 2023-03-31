@@ -141,7 +141,19 @@ public class WatchlistServiceImpl implements WatchlistService {
         return message;
     }
 
-    public String parseJSONDescription(String anime) {
+    public EditMessageText parseJSONDescription(long chatId, String anime, long messageId) {
+        EditMessageText editMessageText = new EditMessageText();
+        editMessageText.setChatId(String.valueOf(chatId));
+        editMessageText.setMessageId((int) messageId);
+
+        List<InlineKeyboardButton> buttons = new ArrayList<>();
+        var backButton = new InlineKeyboardButton();
+        backButton.setText("Back to list");
+        backButton.setCallbackData("BACK_TO_LIST"); // This value does not need to be URL-encoded
+        buttons.add(backButton);
+
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode jsonNode;
         String description = null;
@@ -163,8 +175,11 @@ public class WatchlistServiceImpl implements WatchlistService {
             log.error("Error occurred during parsing JSON Description " +
                     "Place: WatchlistServiceImpl method: parseJSONDescription" + e.getMessage());
         }
+        editMessageText.setText(description);
+        markup.setKeyboard(List.of(buttons));
 
+        editMessageText.setReplyMarkup(markup);
 
-        return description;
+        return editMessageText;
     }
 }
