@@ -26,6 +26,8 @@ public class User {
 
     private List<String> animeList = new ArrayList<>();
 
+    private List<Integer> animeIdList = new ArrayList<>();
+
     @Override
     public String toString() {
         return "User{" +

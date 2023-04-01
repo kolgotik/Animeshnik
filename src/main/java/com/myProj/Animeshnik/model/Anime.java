@@ -12,7 +12,7 @@ import java.util.List;
 @Getter
 @Setter
 @Slf4j
-@Entity
+@Component
 public class Anime {
 
     @Id
@@ -25,6 +25,8 @@ public class Anime {
     private int episodes;
 
     private int averageScore;
+
+    private String overallInfo;
 
 
 }
