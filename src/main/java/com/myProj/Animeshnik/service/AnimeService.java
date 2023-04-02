@@ -11,12 +11,15 @@ public interface AnimeService {
 
     String getRandomAnime();
 
-    String getAnimeDescription(String animeName);
+    String getAnimeDescription(Integer animeId);
 
     String getAnimeTitleFromResponse(String anime);
 
     List<String> retrievedAnimeList(String anime);
 
     String extractAnimeTitle(String anime);
+
+    Integer getAnimeIdFromAPI(String anime);
+    public String test();
 
 }

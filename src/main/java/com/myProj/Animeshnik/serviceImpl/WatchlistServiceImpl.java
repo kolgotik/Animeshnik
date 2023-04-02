@@ -63,6 +63,31 @@ public class WatchlistServiceImpl implements WatchlistService {
     }
 
     @Override
+    public EditMessageText addAnimeToWatchListButton(long chatId, String anime, int messageId) {
+        EditMessageText editMessageText = new EditMessageText();
+        editMessageText.setChatId(String.valueOf(chatId));
+        editMessageText.setMessageId(messageId);
+
+        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+        List<InlineKeyboardButton> rowInline = new ArrayList<>();
+
+        var addAnimeToWatchlistButton = new InlineKeyboardButton();
+        addAnimeToWatchlistButton.setText("Add anime to watchlist");
+        addAnimeToWatchlistButton.setCallbackData("ADD_ANIME_TO_WATCHLIST_BUTTON");
+
+        rowInline.add(addAnimeToWatchlistButton);
+
+        rowsInline.add(rowInline);
+
+        inlineKeyboardMarkup.setKeyboard(rowsInline);
+        editMessageText.setReplyMarkup(inlineKeyboardMarkup);
+        editMessageText.setText(anime);
+        return editMessageText;
+
+    }
+
+    @Override
     public SendMessage animeList(long chatId, List<String> watchlist, User user) {
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
@@ -83,6 +108,7 @@ public class WatchlistServiceImpl implements WatchlistService {
 
         return message;
     }
+
     @Override
     public EditMessageText animeList(long chatId, List<String> watchlist, User user, long messageId) {
         EditMessageText message = new EditMessageText();
@@ -94,7 +120,7 @@ public class WatchlistServiceImpl implements WatchlistService {
 
         watchlist = user.getAnimeList();
 
-        if (user.getAnimeList().isEmpty()){
+        if (user.getAnimeList().isEmpty()) {
             message.setText("There are no anime in your list.");
         }
 
@@ -113,7 +139,7 @@ public class WatchlistServiceImpl implements WatchlistService {
     }
 
     @Override
-    public EditMessageText animeDetails(long chatId, String anime, int messageId) {
+    public EditMessageText animeDetails(long chatId, String anime, Integer animeId, int messageId) {
         EditMessageText message = new EditMessageText();
         message.setChatId(String.valueOf(chatId));
         message.setText("Choose an option for anime: " + anime);
@@ -122,15 +148,15 @@ public class WatchlistServiceImpl implements WatchlistService {
         List<InlineKeyboardButton> buttons = new ArrayList<>();
 
         var descriptionButton = new InlineKeyboardButton();
-        String animeDescription = "DESCRIPTION" + anime;
         descriptionButton.setText("Description");
-        descriptionButton.setCallbackData(animeDescription); // URL-encode the anime variable
+        String desc = "DESCRIPTION";
+        descriptionButton.setCallbackData(desc + animeId); // URL-encode the anime variable
         buttons.add(descriptionButton);
 
         var removeButton = new InlineKeyboardButton();
-        String animeRemove = "REMOVE" + anime;
         removeButton.setText("Remove");
-        removeButton.setCallbackData(animeRemove); // URL-encode the anime variable
+        String remove = "REMOVE";
+        removeButton.setCallbackData(remove + animeId); // URL-encode the anime variable
         buttons.add(removeButton);
 
         var backButton = new InlineKeyboardButton();
@@ -182,14 +208,24 @@ public class WatchlistServiceImpl implements WatchlistService {
                     .replaceAll("\">", "")
                     .replaceAll("</a>", "");
 
+
         } catch (JsonProcessingException e) {
             log.error("Error occurred during parsing JSON Description " +
                     "Place: WatchlistServiceImpl method: parseJSONDescription" + e.getMessage());
         }
-        editMessageText.setText(description);
-        markup.setKeyboard(List.of(buttons));
+        if (description.equals("null")) {
+            description = "No description available";
+            editMessageText.setText(description);
+            markup.setKeyboard(List.of(buttons));
 
-        editMessageText.setReplyMarkup(markup);
+            editMessageText.setReplyMarkup(markup);
+        } else{
+            editMessageText.setText(description);
+            markup.setKeyboard(List.of(buttons));
+
+            editMessageText.setReplyMarkup(markup);
+        }
+
 
         return editMessageText;
     }
