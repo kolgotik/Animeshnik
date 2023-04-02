@@ -16,7 +16,7 @@ import java.util.List;
 public class Anime {
 
     @Id
-    private long id;
+    private Integer id;
 
     private String title;
 

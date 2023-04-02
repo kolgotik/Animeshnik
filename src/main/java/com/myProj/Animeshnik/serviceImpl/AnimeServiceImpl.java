@@ -28,6 +28,54 @@ public class AnimeServiceImpl implements AnimeService {
     @Value("${api.max-pages}") //~16 000
     int maxPage;
 
+    public String test() {
+        String url = "https://graphql.anilist.co";
+        Random random = new Random();
+        int randomPage = random.nextInt(maxPage) + 1;
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("page", randomPage);
+
+        String query = """
+                query ($page: Int) {
+                  Media (id: 130588, type: ANIME) {
+                    id
+                    title {
+                      english
+                      romaji
+                    }
+                    episodes
+                    description
+                    averageScore
+                  }
+                }
+                                
+                """;
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("query", query);
+        requestBody.put("variables", variables);
+
+        Gson gson = new Gson();
+        String jsonRequestBody = gson.toJson(requestBody);
+
+        RequestBody body = RequestBody.create(jsonRequestBody, okhttp3.MediaType.parse("application/json"));
+
+        Request request = new Request.Builder()
+                .url(url)
+                .post(body)
+                .build();
+        String responseBody = null;
+        try (Response response = client.newCall(request).execute()) {
+
+            responseBody = response.body().string();
+
+            log.info("API response: " + responseBody);
+        } catch (ResponseProcessingException | IOException e) {
+            log.error("Error occurred during response processing: " + e.getMessage());
+        }
+        return responseBody;
+
+    }
+
     @Override
     public String getRandomAnime() {
 
@@ -80,18 +128,19 @@ public class AnimeServiceImpl implements AnimeService {
     }
 
     @Override
-    public String getAnimeDescription(String animeName) {
+    public String getAnimeDescription(Integer animeId) {
         String url = "https://graphql.anilist.co";
 
         Map<String, Object> variables = new HashMap<>();
-        variables.put("title", animeName);
+        variables.put("id", animeId);
 
         String query = """
-            query ($title: String) {
-              Media(search: $title, type: ANIME) {
-                description
-              }
-            }""";
+                query ($id: Int) {
+                   Media(id: $id, type: ANIME) {
+                     description
+                   }
+                 }
+                 """;
 
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("query", query);
@@ -135,7 +184,7 @@ public class AnimeServiceImpl implements AnimeService {
             JsonNode mediaNode = rootNode.path("data").path("Page").path("media").get(0);
             JsonNode titleNode = mediaNode.path("title");
 
-            if (titleNode.hasNonNull("english")){
+            if (titleNode.hasNonNull("english")) {
                 title = mediaNode.path("title").path("english").asText();
             } else {
                 title = mediaNode.path("title").path("romaji").asText();
@@ -165,6 +214,65 @@ public class AnimeServiceImpl implements AnimeService {
         }
         return extractedTitle;
     }
+
+    @Override
+    public Integer getAnimeIdFromAPI(String anime) {
+        String url = "https://graphql.anilist.co";
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("title", anime);
+
+        String query = """
+                query ($title: String) {
+                  Media(search: $title, type: ANIME) {
+                    id
+                  }
+                }""";
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("query", query);
+        requestBody.put("variables", variables);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        String jsonRequestBody = null;
+        try {
+            jsonRequestBody = objectMapper.writeValueAsString(requestBody);
+        } catch (JsonProcessingException e) {
+            log.error("Error occurred during request body processing: " + e.getMessage());
+        }
+
+        RequestBody body = RequestBody.create(jsonRequestBody, okhttp3.MediaType.parse("application/json"));
+
+        Request request = new Request.Builder()
+                .url(url)
+                .post(body)
+                .build();
+
+        String responseBody = null;
+        try (Response response = client.newCall(request).execute()) {
+            responseBody = response.body().string();
+            log.info("API response: " + responseBody);
+        } catch (ResponseProcessingException | IOException e) {
+            log.error("Error occurred during response processing: " + e.getMessage());
+        }
+
+        if (responseBody != null) {
+            try {
+                JsonNode responseJson = objectMapper.readTree(responseBody);
+                if (responseJson.has("data")) {
+                    JsonNode mediaNode = responseJson.get("data").get("Media");
+                    if (mediaNode != null && !mediaNode.isNull() && mediaNode.has("id")) {
+                        return mediaNode.get("id").asInt();
+                    }
+                }
+            } catch (JsonProcessingException e) {
+                log.error("Error occurred during response parsing: " + e.getMessage());
+            }
+        }
+
+        return null;
+    }
+
 
     @Override
     public String parseJSONAnime(String anime) {
