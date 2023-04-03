@@ -145,27 +145,35 @@ public class WatchlistServiceImpl implements WatchlistService {
         message.setText("Choose an option for anime: " + anime);
         message.setMessageId(messageId);
 
-        List<InlineKeyboardButton> buttons = new ArrayList<>();
+        List<List<InlineKeyboardButton>> buttons = new ArrayList<>();
 
+        List<InlineKeyboardButton> row1 = new ArrayList<>();
         var descriptionButton = new InlineKeyboardButton();
-        descriptionButton.setText("Description");
+        descriptionButton.setText("Anime Info");
         String desc = "DESCRIPTION";
         descriptionButton.setCallbackData(desc + animeId); // URL-encode the anime variable
-        buttons.add(descriptionButton);
+        row1.add(descriptionButton);
 
         var removeButton = new InlineKeyboardButton();
         removeButton.setText("Remove");
         String remove = "REMOVE";
         removeButton.setCallbackData(remove + animeId); // URL-encode the anime variable
-        buttons.add(removeButton);
+        row1.add(removeButton);
 
         var backButton = new InlineKeyboardButton();
         backButton.setText("Back to list");
         backButton.setCallbackData("BACK_TO_LIST"); // This value does not need to be URL-encoded
-        buttons.add(backButton);
+        row1.add(backButton);
+
+        buttons.add(row1);
+
+        List<InlineKeyboardButton> row2 = new ArrayList<>();
+
+
+        buttons.add(row2);
 
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
-        markup.setKeyboard(List.of(buttons));
+        markup.setKeyboard(buttons);
 
         message.setReplyMarkup(markup);
         return message;
@@ -194,8 +202,21 @@ public class WatchlistServiceImpl implements WatchlistService {
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode jsonNode;
         String description = null;
+        String genres = null;
+        String result = null;
         try {
             jsonNode = objectMapper.readTree(anime);
+
+            JsonNode genresNode = jsonNode.get("data").get("Media").get("genres");
+            if (genresNode.isNull() || genresNode.isEmpty()){
+                genres = "Genres are not available";
+            }
+            StringBuilder stringBuilder = new StringBuilder();
+            for (JsonNode genreNode : genresNode) {
+                stringBuilder.append(genreNode.asText());
+                stringBuilder.append(", ");
+            }
+            genres = stringBuilder.toString().replaceAll(", $", "");
 
             description = jsonNode.get("data").get("Media").get("description").asText()
                     .replaceAll("<br>", "")
@@ -206,6 +227,10 @@ public class WatchlistServiceImpl implements WatchlistService {
                     .replaceAll("</b>", "")
                     .replaceAll("<a href=\"", "")
                     .replaceAll("\">", "")
+                    .replaceAll("&rsquo;", "")
+                    .replaceAll("&ldquo;", "")
+                    .replaceAll("&rdquo;", "")
+                    .replaceAll("&amp;", "")
                     .replaceAll("</a>", "");
 
 
@@ -213,14 +238,24 @@ public class WatchlistServiceImpl implements WatchlistService {
             log.error("Error occurred during parsing JSON Description " +
                     "Place: WatchlistServiceImpl method: parseJSONDescription" + e.getMessage());
         }
+        if (genres.isEmpty() || genres.isBlank() || genres.equals(" ")){
+            genres = "Genres are not available";
+        }
         if (description.equals("null")) {
             description = "No description available";
-            editMessageText.setText(description);
+
+            result = "Genres: " + genres + "\n"
+                    + "\n" + description;
+
+            editMessageText.setText(result);
             markup.setKeyboard(List.of(buttons));
 
             editMessageText.setReplyMarkup(markup);
-        } else{
-            editMessageText.setText(description);
+        } else {
+            result = "Genres: " + genres + "\n"
+                    + "\n" + description;
+
+            editMessageText.setText(result);
             markup.setKeyboard(List.of(buttons));
 
             editMessageText.setReplyMarkup(markup);

@@ -297,7 +297,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             execute(sendMessage);
 
         } catch (TelegramApiException e) {
-            log.error("Error occurred: " + e.getMessage());
+            log.error("Error occurred at TG bot 300: " + e.getMessage());
         }
     }
 
@@ -306,7 +306,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             execute(editMessageText);
 
         } catch (TelegramApiException e) {
-            log.error("Error occurred: " + e.getMessage());
+            log.error("Error occurred 309: " + e.getMessage());
         }
     }
 
