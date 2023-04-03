@@ -77,6 +77,12 @@ public class AnimeServiceImpl implements AnimeService {
     }
 
     @Override
+    public String getAnimeByRating() {
+
+        return null;
+    }
+
+    @Override
     public String getRandomAnime() {
 
         Random random = new Random();
@@ -98,6 +104,7 @@ public class AnimeServiceImpl implements AnimeService {
                       episodes
                       description
                       averageScore
+                      genres
                     }
                   }
                 }""";
@@ -138,6 +145,7 @@ public class AnimeServiceImpl implements AnimeService {
                 query ($id: Int) {
                    Media(id: $id, type: ANIME) {
                      description
+                     genres
                    }
                  }
                  """;
@@ -205,7 +213,7 @@ public class AnimeServiceImpl implements AnimeService {
 
     @Override
     public String extractAnimeTitle(String anime) {
-        String regex = "Anime title:\\s*(.*?)\\s*Average Score:";
+        String regex = "Anime title:\\s*(.*?)\\s*Genres:";
         Pattern pattern = Pattern.compile(regex, Pattern.DOTALL);
         Matcher matcher = pattern.matcher(anime);
         String extractedTitle = "";
@@ -283,6 +291,7 @@ public class AnimeServiceImpl implements AnimeService {
         int episodes;
         String result = "";
         String averageScore;
+        String genres;
 
         ObjectMapper objectMapper = new ObjectMapper();
 
@@ -299,11 +308,15 @@ public class AnimeServiceImpl implements AnimeService {
                     .replaceAll("</b>", "")
                     .replaceAll("<a href=\"", "")
                     .replaceAll("\">", "")
+                    .replaceAll("&rsquo;", "")
+                    .replaceAll("&ldquo;", "")
+                    .replaceAll("&rdquo;", "")
+                    .replaceAll("&amp;", "")
                     .replaceAll("</a>", "");
 
             averageScore = String.valueOf(mediaNode.path("averageScore").asInt());
             episodes = mediaNode.path("episodes").asInt();
-
+            genres = mediaNode.path("genres").asText();
             JsonNode titleNode = mediaNode.path("title");
 
             if (titleNode.hasNonNull("english")) {
@@ -314,6 +327,17 @@ public class AnimeServiceImpl implements AnimeService {
             if (!mediaNode.hasNonNull("description")) {
                 description = "Description is not available";
             }
+            if (!mediaNode.hasNonNull("genres") || mediaNode.path("genres").isEmpty() || mediaNode.path("genres").isNull()) {
+                genres = "Genres are not available";
+            } else {
+                JsonNode genresNode = mediaNode.path("genres");
+                StringBuilder stringBuilder = new StringBuilder();
+                for (JsonNode genreNode : genresNode) {
+                    stringBuilder.append(genreNode.asText());
+                    stringBuilder.append(", ");
+                }
+                genres = stringBuilder.toString().replaceAll(", $", "");
+            }
             if (mediaNode.hasNonNull("averageScore")) {
                 averageScore = averageScore + " / 100";
             } else {
@@ -322,11 +346,11 @@ public class AnimeServiceImpl implements AnimeService {
             }
 
             result = "Anime title: " + title + "\n"
+                    + "\n" + "Genres: " + genres + "\n"
                     + "\n" + "Average Score: " + averageScore + "\n"
+                    + "\n" + "Episodes: " + episodes + "\n"
                     + "\n"
-                    + "Description: " + description + "\n"
-                    + "\n"
-                    + "Episodes: " + episodes;
+                    + "Description: " + description;
 
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
@@ -337,6 +361,7 @@ public class AnimeServiceImpl implements AnimeService {
 
         return result;
     }
+
 }
 
 

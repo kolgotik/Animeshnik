@@ -22,4 +22,5 @@ public interface AnimeService {
     Integer getAnimeIdFromAPI(String anime);
     public String test();
 
+    String getAnimeByRating();
 }
