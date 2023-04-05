@@ -17,10 +17,12 @@ public interface AnimeService {
 
     List<String> retrievedAnimeList(String anime);
 
+    String extractAnimeTitleTest(String anime);
+
     String extractAnimeTitle(String anime);
 
     Integer getAnimeIdFromAPI(String anime);
     public String test();
-
+    String parseTest(String anime);
     String getAnimeByRating();
 }

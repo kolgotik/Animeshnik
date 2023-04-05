@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.myProj.Animeshnik.model.User;
+import com.myProj.Animeshnik.model.UserRepository;
 import com.myProj.Animeshnik.service.WatchlistService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -13,10 +14,8 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageTe
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import java.nio.file.attribute.UserPrincipalNotFoundException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 @Component
@@ -40,7 +39,7 @@ public class WatchlistServiceImpl implements WatchlistService {
     }
 
     @Override
-    public SendMessage addAnimeToWatchListButton(long chatId, String anime) {
+    public SendMessage addAnimeToWatchListButton(long chatId, String anime, int animeId) {
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(String.valueOf(chatId));
 
@@ -50,7 +49,8 @@ public class WatchlistServiceImpl implements WatchlistService {
 
         var addAnimeToWatchlistButton = new InlineKeyboardButton();
         addAnimeToWatchlistButton.setText("Add anime to watchlist");
-        addAnimeToWatchlistButton.setCallbackData("ADD_ANIME_TO_WATCHLIST_BUTTON");
+        String callbackData = "ADD_ANIME_TO_WATCHLIST_BUTTON" + animeId;
+        addAnimeToWatchlistButton.setCallbackData(callbackData);
 
         rowInline.add(addAnimeToWatchlistButton);
 
@@ -63,7 +63,7 @@ public class WatchlistServiceImpl implements WatchlistService {
     }
 
     @Override
-    public EditMessageText addAnimeToWatchListButton(long chatId, String anime, int messageId) {
+    public EditMessageText addAnimeToWatchListButton(long chatId, String anime, int animeId,int messageId) {
         EditMessageText editMessageText = new EditMessageText();
         editMessageText.setChatId(String.valueOf(chatId));
         editMessageText.setMessageId(messageId);
@@ -74,7 +74,8 @@ public class WatchlistServiceImpl implements WatchlistService {
 
         var addAnimeToWatchlistButton = new InlineKeyboardButton();
         addAnimeToWatchlistButton.setText("Add anime to watchlist");
-        addAnimeToWatchlistButton.setCallbackData("ADD_ANIME_TO_WATCHLIST_BUTTON");
+        String callbackData = "ADD_ANIME_TO_WATCHLIST_BUTTON" + animeId;
+        addAnimeToWatchlistButton.setCallbackData(callbackData);
 
         rowInline.add(addAnimeToWatchlistButton);
 
@@ -88,19 +89,32 @@ public class WatchlistServiceImpl implements WatchlistService {
     }
 
     @Override
-    public SendMessage animeList(long chatId, List<String> watchlist, User user) {
+    public SendMessage animeList(long chatId, List<String> watchlist, User user, List<Integer> idList) {
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
         message.setText("Your list:");
 
-        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+        watchlist = user.getAnimeList();
 
-        for (String anime : watchlist) {
-            var animeTitleButton = new InlineKeyboardButton();
-            animeTitleButton.setText(anime);
-            animeTitleButton.setCallbackData(anime);
-            keyboard.add(List.of(animeTitleButton));
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+        idList = user.getAnimeIdList();
+
+
+
+        for (Integer id : idList) {
+            if (idList.contains(id)) {
+                int indexOfAnime = idList.indexOf(id);
+                String anime = watchlist.get(indexOfAnime);
+                if (anime.getBytes().length > 64) {
+                    anime = anime.substring(0, 61) + "...";
+                }
+                var animeTitleButton = new InlineKeyboardButton();
+                animeTitleButton.setText(anime);
+                keyboard.add(List.of(animeTitleButton));
+                animeTitleButton.setCallbackData(String.valueOf(id));
+            }
         }
+
 
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         markup.setKeyboard(keyboard);
@@ -110,25 +124,42 @@ public class WatchlistServiceImpl implements WatchlistService {
     }
 
     @Override
-    public EditMessageText animeList(long chatId, List<String> watchlist, User user, long messageId) {
+    public EditMessageText animeList(long chatId, List<String> watchlist, User user, long messageId, UserRepository userRepository) {
         EditMessageText message = new EditMessageText();
         message.setChatId(String.valueOf(chatId));
         message.setMessageId((int) messageId);
         message.setText("Your list:");
 
+        try {
+            user = userRepository.findById(chatId).orElseThrow(() -> new UserPrincipalNotFoundException("User not found"));
+        } catch (UserPrincipalNotFoundException e) {
+            log.error("no user found: " + e.getMessage());
+        }
+
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
 
         watchlist = user.getAnimeList();
+        List<Integer> idList = user.getAnimeIdList();
 
-        if (user.getAnimeList().isEmpty()) {
+        if (watchlist.isEmpty()) {
             message.setText("There are no anime in your list.");
         }
 
-        for (String anime : watchlist) {
-            var animeTitleButton = new InlineKeyboardButton();
-            animeTitleButton.setText(anime);
-            animeTitleButton.setCallbackData(anime);
-            keyboard.add(List.of(animeTitleButton));
+        for (Integer id : idList) {
+            if (idList.contains(id)) {
+                int indexOfAnime = idList.indexOf(id);
+                if (watchlist.contains(watchlist.get(indexOfAnime))){
+                    String anime = watchlist.get(indexOfAnime);
+                    if (anime.getBytes().length > 64) {
+                        anime = anime.substring(0, 61) + "...";
+                    }
+                    var animeTitleButton = new InlineKeyboardButton();
+                    animeTitleButton.setText(anime);
+                    keyboard.add(List.of(animeTitleButton));
+                    animeTitleButton.setCallbackData(String.valueOf(id));
+                }
+
+            }
         }
 
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
@@ -141,6 +172,9 @@ public class WatchlistServiceImpl implements WatchlistService {
     @Override
     public EditMessageText animeDetails(long chatId, String anime, Integer animeId, int messageId) {
         EditMessageText message = new EditMessageText();
+        if (anime.getBytes().length > 64) {
+            anime = anime.substring(0, 61) + "...";
+        }
         message.setChatId(String.valueOf(chatId));
         message.setText("Choose an option for anime: " + anime);
         message.setMessageId(messageId);
@@ -208,7 +242,7 @@ public class WatchlistServiceImpl implements WatchlistService {
             jsonNode = objectMapper.readTree(anime);
 
             JsonNode genresNode = jsonNode.get("data").get("Media").get("genres");
-            if (genresNode.isNull() || genresNode.isEmpty()){
+            if (genresNode.isNull() || genresNode.isEmpty()) {
                 genres = "Genres are not available";
             }
             StringBuilder stringBuilder = new StringBuilder();
@@ -238,7 +272,7 @@ public class WatchlistServiceImpl implements WatchlistService {
             log.error("Error occurred during parsing JSON Description " +
                     "Place: WatchlistServiceImpl method: parseJSONDescription" + e.getMessage());
         }
-        if (genres.isEmpty() || genres.isBlank() || genres.equals(" ")){
+        if (genres.isEmpty() || genres.isBlank() || genres.equals(" ")) {
             genres = "Genres are not available";
         }
         if (description.equals("null")) {

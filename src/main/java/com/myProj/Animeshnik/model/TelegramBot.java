@@ -3,6 +3,7 @@ package com.myProj.Animeshnik.model;
 import com.myProj.Animeshnik.DAO.UserDAO;
 import com.myProj.Animeshnik.config.BotConfig;
 import com.myProj.Animeshnik.service.*;
+import com.myProj.Animeshnik.serviceImpl.AnimeServiceImpl;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +42,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
             and other commands are in development :(""";
     @Autowired
-    private AnimeService animeService;
+    private AnimeServiceImpl animeService;
     @Autowired
     private UserRepository userRepository;
     @Autowired
@@ -82,17 +83,21 @@ public class TelegramBot extends TelegramLongPollingBot {
                 botCommandService.registerUser(update.getMessage(), userRepository);
                 executeMessage(virtualKeyboardService.sendMessageNoVirtualKeyboard(update.getMessage().getChatId(), GREETING_TEXT));
 
+            } else if ("/by_genre".equals(message)) {
+                prepareAndSendMessage(update.getMessage().getChatId(), "Recommend by genre is in development.");
+            } else if ("/by_rating".equals(message)) {
+                prepareAndSendMessage(update.getMessage().getChatId(), "Recommend by rating is in development.");
             } else if ("/keyboard".equals(message)) {
                 executeMessage(virtualKeyboardService.sendMessageWithVirtualKeyboard(update.getMessage().getChatId(), "Keyboard!",
                         virtualKeyboardService));
             } else if ("/random".equals(message)) {
                 unparsedAnime = animeService.getRandomAnime();
-                //unparsedAnime = animeService.test();
                 String parsedAnime = animeService.parseJSONAnime(unparsedAnime);
+                animeId = animeService.animeId;
                 if (parsedAnime.equals("Nani?! Something went wrong... Repeat the operation.")) {
                     prepareAndSendMessage(update.getMessage().getChatId(), parsedAnime);
                 } else {
-                    executeMessage(watchlistService.addAnimeToWatchListButton(update.getMessage().getChatId(), parsedAnime));
+                    executeMessage(watchlistService.addAnimeToWatchListButton(update.getMessage().getChatId(), parsedAnime, animeId));
                 }
 
 
@@ -113,7 +118,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                         } else {
                             log.info("parsed watchlist: " + formattedList);
                             //prepareAndSendMessage(update.getMessage().getChatId(), formattedList);
-                            executeMessage(watchlistService.animeList(update.getMessage().getChatId(), userAnimeList, user));
+                            executeMessage(watchlistService.animeList(update.getMessage().getChatId(), userAnimeList, user, user.getAnimeIdList()));
                         }
                     } else {
                         prepareAndSendMessage(update.getMessage().getChatId(), "There are no anime in your list. ");
@@ -136,20 +141,36 @@ public class TelegramBot extends TelegramLongPollingBot {
 
             User userForWatchlistActions = userRepository.findById(chatId).orElseThrow();
 
-            if (callbackData.equals("ADD_ANIME_TO_WATCHLIST_BUTTON")) {
 
-                Anime anime = new Anime();
+            String currentCallback = update.getCallbackQuery().getData();
+
+
+            if (callbackData.startsWith("ADD_ANIME_TO_WATCHLIST_BUTTON")) {
+
+                animeId = Integer.valueOf(currentCallback.replace("ADD_ANIME_TO_WATCHLIST_BUTTON", ""));
+                    /*int animeIdIndex = animeIdList.indexOf(animeId);
+                    anime = animeList.get(animeIdIndex);*/
+
 
                 String titleName = update.getCallbackQuery().getMessage().getText();
 
-                anime.setOverallInfo(update.getCallbackQuery().getMessage().getText());
-                log.info("Overall anime info: " + anime.getOverallInfo() + "\n Location: TelegramBot.class line 136/137");
-                String extractedTitle = animeService.extractAnimeTitle(titleName);
-                Integer animeId = animeService.getAnimeIdFromAPI(extractedTitle);
-                anime.setId(animeId);
-                log.info("Retrieved Id: " + anime.getId() + "\n Location: TelegramBot.class line 135/137");
-                anime.setTitle(extractedTitle);
-                log.info("Retrieved Anime: " + anime.getTitle() + "\n Location: TelegramBot.class line 140/141");
+                    /*anime.setOverallInfo(update.getCallbackQuery().getMessage().getText());
+                    log.info("Overall anime info: " + anime.getOverallInfo());*/
+
+                anime = animeService.extractAnimeTitle(titleName);
+                //String titleForDataRetrieve = animeService.getAnimeTitleFromResponse(unparsedAnime);
+                //log.info("Title for data retrieve: " + titleForDataRetrieve);
+                //animeId = animeService.getAnimeIdFromAPI(extractedTitle);
+
+
+                if (anime.getBytes().length > 64) {
+                    anime = anime.substring(0, 61) + "...";
+                }
+
+
+                log.info("Retrieved Id: " + animeId);
+
+                log.info("Retrieved Anime: " + anime);
 
                 try {
                     User user = userRepository.findById(chatId).orElseThrow(() -> new UserPrincipalNotFoundException("User not found"));
@@ -161,53 +182,51 @@ public class TelegramBot extends TelegramLongPollingBot {
                         userAnimeIdList = user.getAnimeIdList();
                         log.info("Anime list: " + userAnimeList);
                         log.info("AnimeId list: " + userAnimeIdList);
-                        if (!userAnimeList.contains(extractedTitle)) {
-                            animeDBService.addAnimeToWatchlist(chatId, extractedTitle, animeId);
+                        if (!userAnimeList.contains(anime)) {
+                            animeDBService.addAnimeToWatchlist(chatId, anime, animeId);
                             EditMessageText messageToExecute = botCommandService.updateMessageText(chatId, (int) messageId,
-                                    "Added anime: " + extractedTitle + " to your watchlist, check: \n/watchlist");
+                                    "Added anime: " + anime + " to your watchlist, check: \n/watchlist");
                             executeMessage(messageToExecute);
                         } else {
                             EditMessageText animeDuplicateMsg = botCommandService.updateMessageText(chatId, (int) messageId,
-                                    "Anime: " + extractedTitle + " is already in watchlist, check: \n/watchlist");
+                                    "Anime: " + anime + " is already in watchlist, check: \n/watchlist");
                             executeMessage(animeDuplicateMsg);
                         }
                     } else {
                         user.setAnimeList(new ArrayList<>());
                         user.setAnimeIdList(new ArrayList<>());
-                        animeDBService.addAnimeToWatchlist(chatId, extractedTitle, animeId);
+                        animeDBService.addAnimeToWatchlist(chatId, anime, animeId);
                         EditMessageText messageToExecute = botCommandService.updateMessageText(chatId, (int) messageId,
-                                "Added anime: " + extractedTitle + " to your watchlist, check: \n/watchlist");
+                                "Added anime: " + anime + " to your watchlist, check: \n/watchlist");
                         executeMessage(messageToExecute);
                     }
                 } catch (UserPrincipalNotFoundException e) {
                     log.error("User not found: " + e.getMessage());
                     throw new RuntimeException(e);
-                } catch (DataIntegrityViolationException e){
+                } catch (DataIntegrityViolationException e) {
                     log.error("Data too long: " + e.getMessage());
                     String parsedAnime = animeService.parseJSONAnime(unparsedAnime);
-                    executeMessage(watchlistService.addAnimeToWatchListButton(chatId, "Yamero! Your list is too big, remove some anime /watchlist \n\n" + parsedAnime, (int) messageId));
+                    executeMessage(watchlistService.addAnimeToWatchListButton(chatId, "Yamero! Your list is too big, remove some anime /watchlist \n\n" + parsedAnime, animeId, (int) messageId));
                 }
 
-            } else if ("/by_genre".equals(callbackData)) {// Do something when the "by_genre" button is pressed
-                prepareAndSendMessage(chatId, "Recommend by genre is in development.");
-            } else if ("/by_rating".equals(callbackData)) {// Do something when the "by_rating" button is pressed
-                prepareAndSendMessage(chatId, "Recommend by rating is in development.");
-
             }
-            for (String callback : userForWatchlistActions.getAnimeList()) {
 
-                User user = null;
 
-                if (callbackData.equals(callback)) {
+            User user;
 
-                    String animeTitle = callbackData;
+            for (Integer id : userForWatchlistActions.getAnimeIdList()) {
+
+                if (callbackData.equals(String.valueOf(id))) {
+
+                    String animeTitle = null;
 
                     try {
                         user = userRepository.findById(chatId).orElseThrow(() -> new UserPrincipalNotFoundException("User not found"));
                         log.info("Anime: " + animeTitle);
 
-                        Integer indexOfAnime = user.getAnimeList().indexOf(animeTitle);
-                        animeId = user.getAnimeIdList().get(indexOfAnime);
+                        Integer indexOfAnime = user.getAnimeIdList().indexOf(id);
+                        animeTitle = userForWatchlistActions.getAnimeList().get(indexOfAnime);
+                        animeId = id;
 
                         EditMessageText editMessageText;
 
@@ -225,8 +244,8 @@ public class TelegramBot extends TelegramLongPollingBot {
                         throw new RuntimeException(e);
                     }
                 }
-
             }
+
 
             List<String> animeList = userForWatchlistActions.getAnimeList();
             List<Integer> animeIdList = userForWatchlistActions.getAnimeIdList();
@@ -247,14 +266,19 @@ public class TelegramBot extends TelegramLongPollingBot {
                 }
             }
             if (callbackData.equals("YES")) {
+
                 animeDBService.removeAnimeFromWatchlist(userForWatchlistActions, animeId, chatId);
-                List<String> userAnimeList = userDAO.getUserListFromDB(userForWatchlistActions, userRepository, chatId);
-                userForWatchlistActions.setAnimeList(userAnimeList);
-                executeMessage(watchlistService.animeList(chatId, userAnimeList, userForWatchlistActions, messageId));
+                try {
+                    userForWatchlistActions = userRepository.findById(chatId).orElseThrow(() -> new UserPrincipalNotFoundException("User not found"));
+                } catch (UserPrincipalNotFoundException e) {
+                    log.error("no user found: " + e.getMessage());
+                }
+                List<String> userAnimeList = userForWatchlistActions.getAnimeList();
+                executeMessage(watchlistService.animeList(chatId, userAnimeList, userForWatchlistActions, messageId, userRepository));
             }
 
             if (callbackData.equals("BACK_TO_LIST")) {
-                executeMessage(watchlistService.animeList(chatId, userForWatchlistActions.getAnimeList(), userForWatchlistActions, messageId));
+                executeMessage(watchlistService.animeList(chatId, userForWatchlistActions.getAnimeList(), userForWatchlistActions, messageId, userRepository));
             }
 
             if (callbackData.equals("BACK_TO_OPTIONS")) {
@@ -317,7 +341,8 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         executeMessage(sendMessage);
     }
-    private void prepareAndUpdateMessage(long chatId, int messageId,String textToSend) {
+
+    private void prepareAndUpdateMessage(long chatId, int messageId, String textToSend) {
         EditMessageText editMessageText = new EditMessageText();
         editMessageText.setChatId(String.valueOf(chatId));
         editMessageText.setText(textToSend);

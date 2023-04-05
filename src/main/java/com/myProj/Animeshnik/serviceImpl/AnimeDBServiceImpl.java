@@ -81,6 +81,7 @@ public class AnimeDBServiceImpl implements AnimeDBService {
             }
 
             user.setAnimeList(animeList);
+            user.setAnimeIdList(animeIdList);
 
             userRepository.save(user);
 
