@@ -233,26 +233,26 @@ public class WatchlistServiceImpl implements WatchlistService {
 
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
 
+        AnimeServiceImpl animeService = new AnimeServiceImpl();
+
+        int id;
+        String description;
+        String title;
+        int episodes;
+        String result = "";
+        String averageScore;
+        String genres;
+        String startDate;
+        String endDate;
+
         ObjectMapper objectMapper = new ObjectMapper();
-        JsonNode jsonNode;
-        String description = null;
-        String genres = null;
-        String result = null;
+
         try {
-            jsonNode = objectMapper.readTree(anime);
+            JsonNode rootNode = objectMapper.readTree(anime);
+            JsonNode mediaNode = rootNode.path("data").path("Media");
+            id = mediaNode.path("id").asInt();
 
-            JsonNode genresNode = jsonNode.get("data").get("Media").get("genres");
-            if (genresNode.isNull() || genresNode.isEmpty()) {
-                genres = "Genres are not available";
-            }
-            StringBuilder stringBuilder = new StringBuilder();
-            for (JsonNode genreNode : genresNode) {
-                stringBuilder.append(genreNode.asText());
-                stringBuilder.append(", ");
-            }
-            genres = stringBuilder.toString().replaceAll(", $", "");
-
-            description = jsonNode.get("data").get("Media").get("description").asText()
+            description = mediaNode.path("description").asText()
                     .replaceAll("<br>", "")
                     .replaceAll("<i>", "")
                     .replaceAll("</i>", "")
@@ -265,39 +265,68 @@ public class WatchlistServiceImpl implements WatchlistService {
                     .replaceAll("&ldquo;", "")
                     .replaceAll("&rdquo;", "")
                     .replaceAll("&amp;", "")
+                    .replaceAll("<\\/I>", "")
                     .replaceAll("</a>", "");
 
+            averageScore = String.valueOf(mediaNode.path("averageScore").asInt());
+            episodes = mediaNode.path("episodes").asInt();
+
+            JsonNode titleNode = mediaNode.path("title");
+
+            endDate = animeService.formatDate(mediaNode.path("endDate"));
+            startDate = animeService.formatDate(mediaNode.path("startDate"));
+
+
+            if (titleNode.hasNonNull("english")) {
+                title = mediaNode.path("title").path("english").asText();
+            } else {
+                title = mediaNode.path("title").path("romaji").asText();
+            }
+            if (!mediaNode.hasNonNull("description")) {
+                description = "Description is not available";
+            }
+            if (!mediaNode.hasNonNull("genres") || mediaNode.path("genres").isEmpty() || mediaNode.path("genres").isNull()) {
+                genres = "Genres are not available";
+            } else {
+                JsonNode genresNode = mediaNode.path("genres");
+                StringBuilder stringBuilder = new StringBuilder();
+                for (JsonNode genreNode : genresNode) {
+                    stringBuilder.append(genreNode.asText());
+                    stringBuilder.append(", ");
+                }
+                genres = stringBuilder.toString().replaceAll(", $", "");
+            }
+            if (mediaNode.hasNonNull("averageScore")) {
+                averageScore = averageScore + " / 100";
+            } else {
+                averageScore = "Score is not available";
+
+            }
+
+            result = "Anime title: " + title + "\n"
+                    + "\n" + "Genres: " + genres + "\n"
+                    + "\n" + "Start Date: " + startDate + "\n"
+                    + "\n" + "End Date: " + endDate + "\n"
+                    + "\n" + "Average Score: " + averageScore + "\n"
+                    + "\n" + "Episodes: " + episodes + "\n"
+                    + "\n"
+                    + "Description: " + description;
 
         } catch (JsonProcessingException e) {
-            log.error("Error occurred during parsing JSON Description " +
-                    "Place: WatchlistServiceImpl method: parseJSONDescription" + e.getMessage());
-        }
-        if (genres.isEmpty() || genres.isBlank() || genres.equals(" ")) {
-            genres = "Genres are not available";
-        }
-        if (description.equals("null")) {
-            description = "No description available";
-
-            result = "Genres: " + genres + "\n"
-                    + "\n" + description;
-
-            editMessageText.setText(result);
-            markup.setKeyboard(List.of(buttons));
-
-            editMessageText.setReplyMarkup(markup);
-        } else {
-            result = "Genres: " + genres + "\n"
-                    + "\n" + description;
-
-            editMessageText.setText(result);
-            markup.setKeyboard(List.of(buttons));
-
-            editMessageText.setReplyMarkup(markup);
+            throw new RuntimeException(e);
+        } catch (NullPointerException e) {
+            result = "Nani?! Something went wrong... Repeat the operation.";
+            log.error("Error occurred on parsing API response: " + e.getMessage());
         }
 
 
+        editMessageText.setText(result);
+        markup.setKeyboard(List.of(buttons));
+
+        editMessageText.setReplyMarkup(markup);
         return editMessageText;
     }
+
 
     @Override
     public EditMessageText addYesNoButton(long chatId, String anime, long messageId) {
