@@ -74,7 +74,7 @@ public class AnimeServiceImpl implements AnimeService {
             JsonNode rootNode = objectMapper.readTree(anime);
             JsonNode mediaNode = rootNode.path("data").path("Media");
             id = mediaNode.path("id").asInt();
-            animeId =id;
+            animeId = id;
             description = mediaNode.path("description").asText()
                     .replaceAll("<br>", "")
                     .replaceAll("<i>", "")
@@ -206,6 +206,14 @@ public class AnimeServiceImpl implements AnimeService {
                   Page(page: $page, perPage: 1) {
                     media(type: ANIME) {
                       id
+                      startDate {
+                        year
+                        month
+                      }
+                      endDate {
+                        year
+                        month
+                      }
                       title {
                         english
                         romaji
@@ -253,8 +261,23 @@ public class AnimeServiceImpl implements AnimeService {
         String query = """
                 query ($id: Int) {
                    Media(id: $id, type: ANIME) {
-                     description
-                     genres
+                     id
+                      startDate {
+                        year
+                        month
+                      }
+                      endDate {
+                        year
+                        month
+                      }
+                      title {
+                        english
+                        romaji
+                      }
+                      episodes
+                      description
+                      averageScore
+                      genres
                    }
                  }
                  """;
@@ -392,8 +415,6 @@ public class AnimeServiceImpl implements AnimeService {
     }
 
 
-
-
     @Override
     public String parseJSONAnime(String anime) {
 
@@ -404,6 +425,8 @@ public class AnimeServiceImpl implements AnimeService {
         String result = "";
         String averageScore;
         String genres;
+        String startDate;
+        String endDate;
 
         ObjectMapper objectMapper = new ObjectMapper();
 
@@ -425,12 +448,18 @@ public class AnimeServiceImpl implements AnimeService {
                     .replaceAll("&ldquo;", "")
                     .replaceAll("&rdquo;", "")
                     .replaceAll("&amp;", "")
+                    .replaceAll("<\\/I>", "")
                     .replaceAll("</a>", "");
 
             averageScore = String.valueOf(mediaNode.path("averageScore").asInt());
             episodes = mediaNode.path("episodes").asInt();
-            genres = mediaNode.path("genres").asText();
+
             JsonNode titleNode = mediaNode.path("title");
+
+            endDate = formatDate(mediaNode.path("endDate"));
+            startDate = formatDate(mediaNode.path("startDate"));
+
+
 
             if (titleNode.hasNonNull("english")) {
                 title = mediaNode.path("title").path("english").asText();
@@ -460,6 +489,8 @@ public class AnimeServiceImpl implements AnimeService {
 
             result = "Anime title: " + title + "\n"
                     + "\n" + "Genres: " + genres + "\n"
+                    + "\n" + "Start Date: " + startDate + "\n"
+                    + "\n" + "End Date: " + endDate + "\n"
                     + "\n" + "Average Score: " + averageScore + "\n"
                     + "\n" + "Episodes: " + episodes + "\n"
                     + "\n"
@@ -475,6 +506,28 @@ public class AnimeServiceImpl implements AnimeService {
         return result;
     }
 
+    public String formatDate(JsonNode dateNode) {
+        String month;
+        String year;
+        if (dateNode.isNull()) {
+            return "No data";
+        }
+        if (dateNode.hasNonNull("month")) {
+            month = dateNode.path("month").asText();
+            if (Integer.parseInt(month) < 10) {
+                month = "0" + month;
+            }
+        } else {
+            month = "unknown";
+        }
+        if (dateNode.hasNonNull("year")){
+            year = dateNode.path("year").asText();
+        } else {
+            year = "unknown";
+        }
+
+        return month + "/" + year;
+    }
 }
 
 
