@@ -1,4 +1,4 @@
-# Animeshnik someday it will be updated
+# Animeshnik someday README will be updated
 Anime recommending telegram bot
 
 Currently this bot can register user at db when they first time pressed start button. By now it has /random command which retrieves from AnilistAPI V2 a random anime. 
