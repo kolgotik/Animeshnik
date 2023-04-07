@@ -28,19 +28,19 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Autowired
     private BotConfig config;
     final static String GREETING_TEXT = """
-            Konnichiwa, fellow animeshnik - san\s
-            I am the greatest Animeshnik bot, my powers are beyond reality\040
+            Konnichiwa, my dear fellow animeshnik-san!\s
                         
-            Press /keyboard to activate command keyboard            
-            Use menu button or keyboard thing near the paper clip symbol to get access to my commands
+            I am the most supreme and mighty Animeshnik bot, possessing powers that transcend the boundaries of reality itself!
                         
-            My commands are listed below:
-
-            /random - to receive absolutely random japanese animation
-                        
-            /watchlist - to get your anime
-
-            and other commands are in development :(""";
+            Press the /keyboard command to unleash the full extent of my awe-inspiring abilities! Press menu button or, you can use the fancy little button (located near the paper clip symbol) to access all of my commands.
+                                                    
+            Behold, my current arsenal of commands:
+                                                    
+            /random - to receive the most outrageously random Japanese (and not only) animation imaginable!
+                                                    
+            /watchlist - to gaze upon the wondrous collection of your anime!
+                                                    
+            And fear not, for more amazing commands are in development, just waiting to be unleashed upon the unsuspecting masses!""";
     @Autowired
     private AnimeServiceImpl animeService;
     @Autowired
@@ -51,7 +51,8 @@ public class TelegramBot extends TelegramLongPollingBot {
     private AnimeDBService animeDBService;
     @Autowired
     private WatchlistService watchlistService;
-
+    @Autowired
+    private GetAnimeByRatingService getAnimeByRatingService;
     @Autowired
     private BotCommandService botCommandService;
     @Autowired
@@ -86,7 +87,8 @@ public class TelegramBot extends TelegramLongPollingBot {
             } else if ("/by_genre".equals(message)) {
                 prepareAndSendMessage(update.getMessage().getChatId(), "Recommend by genre is in development.");
             } else if ("/by_rating".equals(message)) {
-                prepareAndSendMessage(update.getMessage().getChatId(), "Recommend by rating is in development.");
+                executeMessage(getAnimeByRatingService.getAnimeByRatingOptions(update.getMessage().getChatId()));
+                //prepareAndSendMessage(update.getMessage().getChatId(), "Recommend by rating is in development.");
             } else if ("/keyboard".equals(message)) {
                 executeMessage(virtualKeyboardService.sendMessageWithVirtualKeyboard(update.getMessage().getChatId(), "Keyboard!",
                         virtualKeyboardService));
@@ -144,6 +146,58 @@ public class TelegramBot extends TelegramLongPollingBot {
 
             String currentCallback = update.getCallbackQuery().getData();
 
+            if (callbackData.equals("BELOW-FIFTY")) {
+                unparsedAnime = getAnimeByRatingService.getAnimeByRating50();
+                while (unparsedAnime.equals("{\"data\":{\"Page\":{\"media\":[]}}}") || unparsedAnime.isBlank() || unparsedAnime.isEmpty()) {
+                    unparsedAnime = getAnimeByRatingService.getAnimeByRating50();
+                }
+                String parsedAnime = animeService.parseJSONAnime(unparsedAnime);
+                animeId = animeService.animeId;
+                if (parsedAnime.equals("Nani?! Something went wrong... Repeat the operation.")) {
+                    prepareAndSendMessage(chatId, parsedAnime);
+                } else {
+                    executeMessage(watchlistService.addAnimeByRatingToWatchListButton(chatId, parsedAnime, animeId, "BELOW-FIFTY"));
+                }
+            }
+            if (callbackData.equals("FIFTY-SIXTY")) {
+                unparsedAnime = getAnimeByRatingService.getAnimeByRating50to60();
+                while (unparsedAnime.equals("{\"data\":{\"Page\":{\"media\":[]}}}") || unparsedAnime.isBlank() || unparsedAnime.isEmpty()) {
+                    unparsedAnime = getAnimeByRatingService.getAnimeByRating50to60();
+                }
+                String parsedAnime = animeService.parseJSONAnime(unparsedAnime);
+                animeId = animeService.animeId;
+                if (parsedAnime.equals("Nani?! Something went wrong... Repeat the operation.")) {
+                    prepareAndSendMessage(chatId, parsedAnime);
+                } else {
+                    executeMessage(watchlistService.addAnimeByRatingToWatchListButton(chatId, parsedAnime, animeId, "FIFTY-SIXTY"));
+                }
+            }
+            if (callbackData.equals("SIXTY-EIGHTY")) {
+                unparsedAnime = getAnimeByRatingService.getAnimeByRating60to80();
+                while (unparsedAnime.equals("{\"data\":{\"Page\":{\"media\":[]}}}") || unparsedAnime.isBlank() || unparsedAnime.isEmpty()) {
+                    unparsedAnime = getAnimeByRatingService.getAnimeByRating60to80();
+                }
+                String parsedAnime = animeService.parseJSONAnime(unparsedAnime);
+                animeId = animeService.animeId;
+                if (parsedAnime.equals("Nani?! Something went wrong... Repeat the operation.")) {
+                    prepareAndSendMessage(chatId, parsedAnime);
+                } else {
+                    executeMessage(watchlistService.addAnimeByRatingToWatchListButton(chatId, parsedAnime, animeId, "SIXTY-EIGHTY"));
+                }
+            }
+            if (callbackData.equals("EIGHTY-HUNDRED")) {
+                unparsedAnime = getAnimeByRatingService.getAnimeByRating80to100();
+                while (unparsedAnime.equals("{\"data\":{\"Page\":{\"media\":[]}}}") || unparsedAnime.isBlank() || unparsedAnime.isEmpty()) {
+                    unparsedAnime = getAnimeByRatingService.getAnimeByRating80to100();
+                }
+                String parsedAnime = animeService.parseJSONAnime(unparsedAnime);
+                animeId = animeService.animeId;
+                if (parsedAnime.equals("Nani?! Something went wrong... Repeat the operation.")) {
+                    prepareAndSendMessage(chatId, parsedAnime);
+                } else {
+                    executeMessage(watchlistService.addAnimeByRatingToWatchListButton(chatId, parsedAnime, animeId, "EIGHTY-HUNDRED"));
+                }
+            }
 
             if (callbackData.startsWith("ADD_ANIME_TO_WATCHLIST_BUTTON")) {
 
@@ -309,6 +363,17 @@ public class TelegramBot extends TelegramLongPollingBot {
                     log.info("Retrieved description:" + rawDescription);
                 }
 
+            }
+
+            if (callbackData.equals("/random")) {
+                unparsedAnime = animeService.getRandomAnime();
+                String parsedAnime = animeService.parseJSONAnime(unparsedAnime);
+                animeId = animeService.animeId;
+                if (parsedAnime.equals("Nani?! Something went wrong... Repeat the operation.")) {
+                    prepareAndSendMessage(chatId, parsedAnime);
+                } else {
+                    executeMessage(watchlistService.addAnimeToWatchListButton(chatId, parsedAnime, animeId));
+                }
             }
 
         }

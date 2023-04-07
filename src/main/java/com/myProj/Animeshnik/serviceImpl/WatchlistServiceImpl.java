@@ -54,6 +54,42 @@ public class WatchlistServiceImpl implements WatchlistService {
 
         rowInline.add(addAnimeToWatchlistButton);
 
+        var rollButton = new InlineKeyboardButton();
+        rollButton.setText("Continue rolling");
+        rollButton.setCallbackData("/random");
+
+        rowInline.add(rollButton);
+
+        rowsInline.add(rowInline);
+
+        inlineKeyboardMarkup.setKeyboard(rowsInline);
+        sendMessage.setReplyMarkup(inlineKeyboardMarkup);
+        sendMessage.setText(anime);
+        return sendMessage;
+    }
+
+    @Override
+    public SendMessage addAnimeByRatingToWatchListButton(long chatId, String anime, int animeId, String ratingOption) {
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(String.valueOf(chatId));
+
+        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+        List<InlineKeyboardButton> rowInline = new ArrayList<>();
+
+        var addAnimeToWatchlistButton = new InlineKeyboardButton();
+        addAnimeToWatchlistButton.setText("Add anime to watchlist");
+        String callbackData = "ADD_ANIME_TO_WATCHLIST_BUTTON" + animeId;
+        addAnimeToWatchlistButton.setCallbackData(callbackData);
+
+        rowInline.add(addAnimeToWatchlistButton);
+
+        var rollButton = new InlineKeyboardButton();
+        rollButton.setText("Continue rolling");
+        rollButton.setCallbackData(ratingOption);
+
+        rowInline.add(rollButton);
+
         rowsInline.add(rowInline);
 
         inlineKeyboardMarkup.setKeyboard(rowsInline);

@@ -14,6 +14,9 @@ import okhttp3.Response;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -183,12 +186,6 @@ public class AnimeServiceImpl implements AnimeService {
         }
         return responseBody;
 
-    }
-
-    @Override
-    public String getAnimeByRating() {
-
-        return null;
     }
 
     @Override
@@ -460,7 +457,6 @@ public class AnimeServiceImpl implements AnimeService {
             startDate = formatDate(mediaNode.path("startDate"));
 
 
-
             if (titleNode.hasNonNull("english")) {
                 title = mediaNode.path("title").path("english").asText();
             } else {
@@ -494,7 +490,8 @@ public class AnimeServiceImpl implements AnimeService {
                     + "\n" + "Average Score: " + averageScore + "\n"
                     + "\n" + "Episodes: " + episodes + "\n"
                     + "\n"
-                    + "Description: " + description;
+                    + "Description: " + description + "\n\n" + "press for random if bored -> /random" + "\n\n"
+                    + "\u200B";
 
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
@@ -520,7 +517,7 @@ public class AnimeServiceImpl implements AnimeService {
         } else {
             month = "unknown";
         }
-        if (dateNode.hasNonNull("year")){
+        if (dateNode.hasNonNull("year")) {
             year = dateNode.path("year").asText();
         } else {
             year = "unknown";

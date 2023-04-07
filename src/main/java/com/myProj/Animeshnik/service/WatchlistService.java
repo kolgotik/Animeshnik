@@ -11,6 +11,8 @@ public interface WatchlistService {
     String formatAnimeList(List<String> watchlist);
 
     SendMessage addAnimeToWatchListButton(long chatId, String anime, int animeId);
+
+    SendMessage addAnimeByRatingToWatchListButton(long chatId, String anime, int animeId, String ratingOption);
     EditMessageText addAnimeToWatchListButton(long chatId, String anime, int animeId ,int messageId);
 
     SendMessage animeList(long chatId, List<String> watchlist, User user, List<Integer> idList);
