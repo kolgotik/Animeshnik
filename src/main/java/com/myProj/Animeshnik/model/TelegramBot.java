@@ -265,39 +265,53 @@ public class TelegramBot extends TelegramLongPollingBot {
 
             }
 
+            if (callbackData.equals("/random")) {
+                unparsedAnime = animeService.getRandomAnime();
+                String parsedAnime = animeService.parseJSONAnime(unparsedAnime);
+                animeId = animeService.animeId;
+                if (parsedAnime.equals("Nani?! Something went wrong... Repeat the operation.")) {
+                    prepareAndSendMessage(chatId, parsedAnime);
+                } else {
+                    executeMessage(watchlistService.addAnimeToWatchListButton(chatId, parsedAnime, animeId));
+                }
+            }
 
             User user;
 
-            for (Integer id : userForWatchlistActions.getAnimeIdList()) {
+            if (userForWatchlistActions.getAnimeList() != null && !userForWatchlistActions.getAnimeList().isEmpty()){
+                for (Integer id : userForWatchlistActions.getAnimeIdList()) {
 
-                if (callbackData.equals(String.valueOf(id))) {
+                    if (callbackData.equals(String.valueOf(id))) {
 
-                    String animeTitle = null;
+                        String animeTitle = null;
 
-                    try {
-                        user = userRepository.findById(chatId).orElseThrow(() -> new UserPrincipalNotFoundException("User not found"));
-                        log.info("Anime: " + animeTitle);
+                        try {
+                            user = userRepository.findById(chatId).orElseThrow(() -> new UserPrincipalNotFoundException("User not found"));
+                            log.info("Anime: " + animeTitle);
 
-                        Integer indexOfAnime = user.getAnimeIdList().indexOf(id);
-                        animeTitle = userForWatchlistActions.getAnimeList().get(indexOfAnime);
-                        animeId = id;
+                            Integer indexOfAnime = user.getAnimeIdList().indexOf(id);
+                            animeTitle = userForWatchlistActions.getAnimeList().get(indexOfAnime);
+                            animeId = id;
 
-                        EditMessageText editMessageText;
+                            EditMessageText editMessageText;
 
-                        if (animeTitle != null) {
-                            editMessageText = watchlistService.animeDetails(chatId, animeTitle, animeId, (int) messageId);
-                        } else {
-                            editMessageText = new EditMessageText();
-                            editMessageText.setChatId(String.valueOf(chatId));
-                            editMessageText.setMessageId((int) messageId);
-                            editMessageText.setText("Error: Could not extract anime title from message");
+                            if (animeTitle != null) {
+                                editMessageText = watchlistService.animeDetails(chatId, animeTitle, animeId, (int) messageId);
+                            } else {
+                                editMessageText = new EditMessageText();
+                                editMessageText.setChatId(String.valueOf(chatId));
+                                editMessageText.setMessageId((int) messageId);
+                                editMessageText.setText("Error: Could not extract anime title from message");
+                            }
+                            executeMessage(editMessageText);
+                        } catch (UserPrincipalNotFoundException e) {
+                            log.error("User not found: " + e.getMessage());
+                            throw new RuntimeException(e);
                         }
-                        executeMessage(editMessageText);
-                    } catch (UserPrincipalNotFoundException e) {
-                        log.error("User not found: " + e.getMessage());
-                        throw new RuntimeException(e);
                     }
                 }
+            } else {
+                return;
             }
 
 
@@ -365,16 +379,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
             }
 
-            if (callbackData.equals("/random")) {
-                unparsedAnime = animeService.getRandomAnime();
-                String parsedAnime = animeService.parseJSONAnime(unparsedAnime);
-                animeId = animeService.animeId;
-                if (parsedAnime.equals("Nani?! Something went wrong... Repeat the operation.")) {
-                    prepareAndSendMessage(chatId, parsedAnime);
-                } else {
-                    executeMessage(watchlistService.addAnimeToWatchListButton(chatId, parsedAnime, animeId));
-                }
-            }
+
 
         }
 
