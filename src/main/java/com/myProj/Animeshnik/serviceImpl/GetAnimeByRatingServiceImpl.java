@@ -24,13 +24,21 @@ public class GetAnimeByRatingServiceImpl implements GetAnimeByRatingService {
     private final OkHttpClient client = new OkHttpClient();
     @Value("${api.max-pages}") //~16 000
     int maxPage;
+    @Value("${api.max-pages-for-below50}")
+    int maxPageForBelow50;
+    @Value("${api.max-pages-for-50to60}")
+    int maxPageFor50to60;
+    @Value("${api.max-pages-for-60to80}")
+    int maxPageFor60to80;
+    @Value("${api.max-pages-for-80to100}")
+    int maxPageFor80to100;
 
     @Override
     public String getAnimeByRating50() {
 
         Random random = new Random();
         String url = "https://graphql.anilist.co";
-        int randomPage = random.nextInt(maxPage) + 1;
+        int randomPage = random.nextInt(maxPageForBelow50) + 1;
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("page", randomPage);
@@ -38,7 +46,7 @@ public class GetAnimeByRatingServiceImpl implements GetAnimeByRatingService {
         String below50Query = """
                 query ($page: Int) {
                     Page(page: $page, perPage: 1) {
-                      media(type: ANIME, sort: SCORE_DESC, averageScore_lesser: 50, averageScore_greater: 0, averageScore_not: null) {
+                      media(type: ANIME, sort: SCORE_DESC, averageScore_lesser: 51, averageScore_greater: 0, averageScore_not: null) {
                         id
                         startDate {
                           year
@@ -90,7 +98,7 @@ public class GetAnimeByRatingServiceImpl implements GetAnimeByRatingService {
     public String getAnimeByRating50to60() {
         Random random = new Random();
         String url = "https://graphql.anilist.co";
-        int randomPage = random.nextInt(maxPage) + 1;
+        int randomPage = random.nextInt(maxPageFor50to60) + 1;
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("page", randomPage);
@@ -150,7 +158,7 @@ public class GetAnimeByRatingServiceImpl implements GetAnimeByRatingService {
     public String getAnimeByRating60to80() {
         Random random = new Random();
         String url = "https://graphql.anilist.co";
-        int randomPage = random.nextInt(maxPage) + 1;
+        int randomPage = random.nextInt(maxPageFor60to80) + 1;
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("page", randomPage);
@@ -158,7 +166,7 @@ public class GetAnimeByRatingServiceImpl implements GetAnimeByRatingService {
         String sixtyToEightyQuery = """
                 query ($page: Int) {
                     Page(page: $page, perPage: 1) {
-                      media(type: ANIME, sort: SCORE_DESC, averageScore_lesser: 81, averageScore_greater: 59, averageScore_not: null) {
+                      media(type: ANIME, sort: SCORE_DESC, averageScore_lesser: 81, averageScore_greater: 60, averageScore_not: null) {
                         id
                         startDate {
                           year
@@ -210,7 +218,7 @@ public class GetAnimeByRatingServiceImpl implements GetAnimeByRatingService {
     public String getAnimeByRating80to100() {
         Random random = new Random();
         String url = "https://graphql.anilist.co";
-        int randomPage = random.nextInt(maxPage) + 1;
+        int randomPage = random.nextInt(maxPageFor80to100) + 1;
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("page", randomPage);
@@ -282,7 +290,7 @@ public class GetAnimeByRatingServiceImpl implements GetAnimeByRatingService {
         List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
 
         var belowFiftyButton = new InlineKeyboardButton();
-        belowFiftyButton.setText("Average score from 0 - 49");
+        belowFiftyButton.setText("Average score from 0 - 50");
         belowFiftyButton.setCallbackData("BELOW-FIFTY");
         keyboard.add(List.of(belowFiftyButton));
 
