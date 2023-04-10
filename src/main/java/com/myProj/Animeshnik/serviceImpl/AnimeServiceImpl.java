@@ -14,13 +14,8 @@ import okhttp3.Response;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -203,6 +198,12 @@ public class AnimeServiceImpl implements AnimeService {
                   Page(page: $page, perPage: 1) {
                     media(type: ANIME) {
                       id
+                      coverImage {
+                        extraLarge
+                        large
+                        medium
+                        color
+                      }
                       startDate {
                         year
                         month
@@ -411,6 +412,24 @@ public class AnimeServiceImpl implements AnimeService {
         return null;
     }
 
+    @Override
+    public String extractImgLink(String anime){
+
+        String imgLink;
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        try {
+            JsonNode rootNode = objectMapper.readTree(anime);
+            JsonNode mediaNode = rootNode.path("data").path("Page").path("media").get(0);
+            imgLink = mediaNode.path("coverImage").path("extraLarge").asText();
+
+
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+
+        return imgLink;
+    }
 
     @Override
     public String parseJSONAnime(String anime) {

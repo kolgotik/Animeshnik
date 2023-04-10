@@ -6,22 +6,35 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.myProj.Animeshnik.model.User;
 import com.myProj.Animeshnik.model.UserRepository;
 import com.myProj.Animeshnik.service.WatchlistService;
+import jakarta.ws.rs.client.ResponseProcessingException;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
+import org.telegram.telegrambots.meta.api.objects.games.CallbackGame;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
+import java.io.IOException;
 import java.nio.file.attribute.UserPrincipalNotFoundException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @Service
 @Slf4j
 public class WatchlistServiceImpl implements WatchlistService {
+
+    private final OkHttpClient client = new OkHttpClient();
     @Override
     public String formatAnimeList(List<String> watchlist) {
 
@@ -38,6 +51,36 @@ public class WatchlistServiceImpl implements WatchlistService {
         return output.toString();
     }
 
+    @Override
+    public SendPhoto addAnimeToWatchListWithImgButton(long chatId, String anime, int animeId, String imgLink) {
+        SendPhoto sendPhoto = new SendPhoto();
+        sendPhoto.setChatId(String.valueOf(chatId));
+        sendPhoto.setPhoto(new InputFile(imgLink));
+
+        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+        List<InlineKeyboardButton> rowInline = new ArrayList<>();
+
+        var addAnimeToWatchlistButton = new InlineKeyboardButton();
+        addAnimeToWatchlistButton.setText("Add anime to watchlist");
+        String callbackData = "ADD_ANIME_TO_WATCHLIST_BUTTON" + animeId;
+        addAnimeToWatchlistButton.setCallbackData(callbackData);
+
+        rowInline.add(addAnimeToWatchlistButton);
+
+        var rollButton = new InlineKeyboardButton();
+        rollButton.setText("Continue rolling");
+        rollButton.setCallbackData("/random");
+
+        rowInline.add(rollButton);
+
+        rowsInline.add(rowInline);
+
+        inlineKeyboardMarkup.setKeyboard(rowsInline);
+        sendPhoto.setReplyMarkup(inlineKeyboardMarkup);
+        sendPhoto.setCaption(anime);
+        return sendPhoto;
+    }
     @Override
     public SendMessage addAnimeToWatchListButton(long chatId, String anime, int animeId) {
         SendMessage sendMessage = new SendMessage();
@@ -124,6 +167,100 @@ public class WatchlistServiceImpl implements WatchlistService {
 
     }
 
+    private String getImgForList(Integer animeId){
+
+        String url = "https://graphql.anilist.co";
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("id", animeId);
+
+        String imgQuery = """
+                query ($id: Int) {
+                  Media(id: $id, type: ANIME) {
+                    id
+                    title {
+                      romaji
+                    }
+                    coverImage {
+                      large
+                    }
+                  }
+                }
+                """;
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("query", imgQuery);
+        requestBody.put("variables", variables);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        String jsonRequestBody = null;
+        try {
+            jsonRequestBody = objectMapper.writeValueAsString(requestBody);
+        } catch (JsonProcessingException e) {
+            log.error("Error occurred during request body processing: " + e.getMessage());
+        }
+
+        RequestBody body = RequestBody.create(jsonRequestBody, okhttp3.MediaType.parse("application/json"));
+
+        Request request = new Request.Builder()
+                .url(url)
+                .post(body)
+                .build();
+
+        String responseBody = null;
+        try (Response response = client.newCall(request).execute()) {
+            responseBody = response.body().string();
+            log.info("API response: " + responseBody);
+        } catch (ResponseProcessingException | IOException e) {
+            log.error("Error occurred during response processing: " + e.getMessage());
+        }
+
+        String imgLink;
+        try {
+            JsonNode rootNode = objectMapper.readTree(responseBody);
+            JsonNode mediaNode = rootNode.path("data").path("Media");
+            JsonNode imgNode = mediaNode.path("coverImage").path("large");
+            imgLink = imgNode.asText();
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+
+        return imgLink;
+    }
+    @Override
+    public SendPhoto animeListWithImg(long chatId, List<String> watchlist, User user, List<Integer> idList) {
+        SendPhoto message = null;
+        watchlist = user.getAnimeList();
+
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+        idList = user.getAnimeIdList();
+
+
+
+        for (Integer id : idList) {
+            if (idList.contains(id)) {
+                int indexOfAnime = idList.indexOf(id);
+                String anime = watchlist.get(indexOfAnime);
+                if (anime.getBytes().length > 64) {
+                    anime = anime.substring(0, 61) + "...";
+                }
+                var animeTitleButton = new InlineKeyboardButton();
+                animeTitleButton.setText(anime);
+                keyboard.add(List.of(animeTitleButton));
+                message = new SendPhoto();
+                message.setChatId(String.valueOf(chatId));
+                message.setPhoto(new InputFile(getImgForList(id)));
+                animeTitleButton.setCallbackData(String.valueOf(id));
+
+            }
+        }
+
+
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        markup.setKeyboard(keyboard);
+        message.setReplyMarkup(markup);
+
+        return message;
+    }
     @Override
     public SendMessage animeList(long chatId, List<String> watchlist, User user, List<Integer> idList) {
         SendMessage message = new SendMessage();

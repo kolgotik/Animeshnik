@@ -48,6 +48,12 @@ public class GetAnimeByRatingServiceImpl implements GetAnimeByRatingService {
                     Page(page: $page, perPage: 1) {
                       media(type: ANIME, sort: SCORE_DESC, averageScore_lesser: 51, averageScore_greater: 0, averageScore_not: null) {
                         id
+                        coverImage {
+                          extraLarge
+                          large
+                          medium
+                          color
+                        }
                         startDate {
                           year
                           month
@@ -108,6 +114,12 @@ public class GetAnimeByRatingServiceImpl implements GetAnimeByRatingService {
                     Page(page: $page, perPage: 1) {
                       media(type: ANIME, sort: SCORE_DESC, averageScore_lesser: 61, averageScore_greater: 50, averageScore_not: null) {
                         id
+                        coverImage {
+                          extraLarge
+                          large
+                          medium
+                          color
+                        }
                         startDate {
                           year
                           month
@@ -168,6 +180,12 @@ public class GetAnimeByRatingServiceImpl implements GetAnimeByRatingService {
                     Page(page: $page, perPage: 1) {
                       media(type: ANIME, sort: SCORE_DESC, averageScore_lesser: 81, averageScore_greater: 60, averageScore_not: null) {
                         id
+                        coverImage {
+                          extraLarge
+                          large
+                          medium
+                          color
+                        }
                         startDate {
                           year
                           month
@@ -228,6 +246,12 @@ public class GetAnimeByRatingServiceImpl implements GetAnimeByRatingService {
                     Page(page: $page, perPage: 1) {
                       media(type: ANIME, sort: SCORE_DESC, averageScore_lesser: 100, averageScore_greater: 80, averageScore_not: null) {
                         id
+                        coverImage {
+                          extraLarge
+                          large
+                          medium
+                          color
+                        }
                         startDate {
                           year
                           month

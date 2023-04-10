@@ -11,6 +11,8 @@ public interface AnimeService {
 
     String parseJSONAnime(String anime);
 
+    String extractImgLink(String response);
+
     String getRandomAnime();
 
     String getAnimeDescription(Integer animeId);
