@@ -1,7 +1,5 @@
 package com.myProj.Animeshnik.service;
 
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-
 import java.util.List;
 
 public interface AnimeService {
@@ -25,7 +23,7 @@ public interface AnimeService {
 
     String extractAnimeTitle(String anime);
 
-    Integer getAnimeIdFromAPI(String anime);
+    Integer getAnimeIdFromJSON(String unparsedAnime);
     public String test();
     String parseTest(String anime);
 

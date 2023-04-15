@@ -89,6 +89,7 @@ public class GetAnimeByRatingServiceImpl implements GetAnimeByRatingService {
                 .post(body)
                 .build();
         String responseBody = null;
+        final OkHttpClient client = new OkHttpClient();
         try (Response response = client.newCall(request).execute()) {
 
             responseBody = response.body().string();
@@ -155,6 +156,7 @@ public class GetAnimeByRatingServiceImpl implements GetAnimeByRatingService {
                 .post(body)
                 .build();
         String responseBody = null;
+        final OkHttpClient client = new OkHttpClient();
         try (Response response = client.newCall(request).execute()) {
 
             responseBody = response.body().string();
@@ -221,6 +223,7 @@ public class GetAnimeByRatingServiceImpl implements GetAnimeByRatingService {
                 .post(body)
                 .build();
         String responseBody = null;
+        final OkHttpClient client = new OkHttpClient();
         try (Response response = client.newCall(request).execute()) {
 
             responseBody = response.body().string();
@@ -287,6 +290,7 @@ public class GetAnimeByRatingServiceImpl implements GetAnimeByRatingService {
                 .post(body)
                 .build();
         String responseBody = null;
+        final OkHttpClient client = new OkHttpClient();
         try (Response response = client.newCall(request).execute()) {
 
             responseBody = response.body().string();
