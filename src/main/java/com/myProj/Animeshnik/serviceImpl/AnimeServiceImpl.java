@@ -352,64 +352,25 @@ public class AnimeServiceImpl implements AnimeService {
     }
 
     @Override
-    public Integer getAnimeIdFromAPI(String anime) {
-        String url = "https://graphql.anilist.co";
+    public Integer getAnimeIdFromJSON(String unparsedAnime) {
 
-        Map<String, Object> variables = new HashMap<>();
-        variables.put("title", anime);
-
-        String query = """
-                query ($title: String) {
-                  Media(search: $title, type: ANIME) {
-                    id
-                  }
-                }""";
-
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("query", query);
-        requestBody.put("variables", variables);
+        int id = 0;
 
         ObjectMapper objectMapper = new ObjectMapper();
-        String jsonRequestBody = null;
+
         try {
-            jsonRequestBody = objectMapper.writeValueAsString(requestBody);
+            JsonNode rootNode = objectMapper.readTree(unparsedAnime);
+            JsonNode mediaNode = rootNode.path("data").path("Page").path("media").get(0);
+            id = mediaNode.path("id").asInt();
+            animeId = id;
+
         } catch (JsonProcessingException e) {
-            log.error("Error occurred during request body processing: " + e.getMessage());
+            throw new RuntimeException(e);
+        } catch (NullPointerException e) {
+            log.error("Error occurred on parsing API response: " + e.getMessage());
         }
 
-        RequestBody body = RequestBody.create(jsonRequestBody, okhttp3.MediaType.parse("application/json"));
-
-        Request request = new Request.Builder()
-                .url(url)
-                .post(body)
-                .build();
-
-        String responseBody = null;
-        try (Response response = client.newCall(request).execute()) {
-            responseBody = response.body().string();
-            log.info("API response: " + responseBody);
-        } catch (ResponseProcessingException | IOException e) {
-            log.error("Error occurred during response processing: " + e.getMessage());
-        } catch (HttpClientErrorException.NotFound notFoundException) {
-            log.error("Anime not found" + notFoundException.getMessage());
-            return Integer.valueOf(404 + " Not found");
-        }
-
-        if (responseBody != null) {
-            try {
-                JsonNode responseJson = objectMapper.readTree(responseBody);
-                if (responseJson.has("data")) {
-                    JsonNode mediaNode = responseJson.get("data").get("Media");
-                    if (mediaNode != null && !mediaNode.isNull() && mediaNode.has("id")) {
-                        return mediaNode.get("id").asInt();
-                    }
-                }
-            } catch (JsonProcessingException e) {
-                log.error("Error occurred during response parsing: " + e.getMessage());
-            }
-        }
-
-        return null;
+        return id;
     }
 
     @Override
