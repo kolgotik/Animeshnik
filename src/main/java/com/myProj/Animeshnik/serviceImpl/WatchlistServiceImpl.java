@@ -386,7 +386,7 @@ public class WatchlistServiceImpl implements WatchlistService {
         return message;
     }
 
-    public EditMessageText parseJSONDescription(long chatId, String anime, long messageId) {
+    public EditMessageText parseJSONDescription(long chatId, String anime, long messageId, String imgLink) {
         EditMessageText editMessageText = new EditMessageText();
         editMessageText.setChatId(String.valueOf(chatId));
         editMessageText.setMessageId((int) messageId);
@@ -483,7 +483,9 @@ public class WatchlistServiceImpl implements WatchlistService {
                     + "\n" + "Average Score: " + averageScore + "\n"
                     + "\n" + "Episodes: " + episodes + "\n"
                     + "\n"
-                    + "Description: " + description;
+                    + "Description: " + description +
+                     "\n\n" +
+                    " " + imgLink + " ";
 
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
@@ -497,6 +499,7 @@ public class WatchlistServiceImpl implements WatchlistService {
         markup.setKeyboard(List.of(buttons));
 
         editMessageText.setReplyMarkup(markup);
+
         return editMessageText;
     }
 
