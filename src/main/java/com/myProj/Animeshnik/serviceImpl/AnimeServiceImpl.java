@@ -13,7 +13,6 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.HttpClientErrorException;
 
 import java.io.IOException;
 import java.util.*;
@@ -184,6 +183,71 @@ public class AnimeServiceImpl implements AnimeService {
     }
 
     @Override
+    public String getAnimeByID(int id) {
+
+
+        String url = "https://graphql.anilist.co";
+
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("id", id);
+
+        String query = """
+                query ($id: Int) {
+                  Page(page:1, perPage: 1) {
+                    media(id: $id ,type: ANIME) {
+                      id
+                      coverImage {
+                        extraLarge
+                        large
+                        medium
+                        color
+                      }
+                      startDate {
+                        year
+                        month
+                      }
+                      endDate {
+                        year
+                        month
+                      }
+                      title {
+                        english
+                        romaji
+                      }
+                      episodes
+                      description
+                      averageScore
+                      genres
+                    }
+                  }
+                }""";
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("query", query);
+        requestBody.put("variables", variables);
+
+        Gson gson = new Gson();
+        String jsonRequestBody = gson.toJson(requestBody);
+
+        RequestBody body = RequestBody.create(jsonRequestBody, okhttp3.MediaType.parse("application/json"));
+
+        Request request = new Request.Builder()
+                .url(url)
+                .post(body)
+                .build();
+        String responseBody = null;
+        try (Response response = client.newCall(request).execute()) {
+
+            responseBody = response.body().string();
+
+            log.info("API response: " + responseBody);
+        } catch (ResponseProcessingException | IOException e) {
+            log.error("Error occurred during response processing: " + e.getMessage());
+        }
+        return responseBody;
+    }
+    @Override
     public String getRandomAnime() {
 
         Random random = new Random();
@@ -260,6 +324,12 @@ public class AnimeServiceImpl implements AnimeService {
                 query ($id: Int) {
                    Media(id: $id, type: ANIME) {
                      id
+                     coverImage {
+                        extraLarge
+                        large
+                        medium
+                        color
+                      }
                       startDate {
                         year
                         month
@@ -374,6 +444,12 @@ public class AnimeServiceImpl implements AnimeService {
     }
 
     @Override
+    public Integer getAmountOfAvailablePages(List<String> selectedGenres) {
+
+        return null;
+    }
+
+    @Override
     public String extractImgLink(String anime){
 
         String imgLink;
@@ -381,15 +457,38 @@ public class AnimeServiceImpl implements AnimeService {
 
         try {
             JsonNode rootNode = objectMapper.readTree(anime);
-            JsonNode mediaNode = rootNode.path("data").path("Page").path("media").get(0);
-            imgLink = mediaNode.path("coverImage").path("extraLarge").asText();
+            if (rootNode.path("data").path("Page").isNull() || rootNode.path("data").path("Page").isEmpty()){
+                JsonNode mediaNode = rootNode.path("data").path("Media");
+                imgLink = mediaNode.path("coverImage").path("extraLarge").asText();
+            } else {
+                JsonNode mediaNode = rootNode.path("data").path("Page").path("media").get(0);
+                imgLink = mediaNode.path("coverImage").path("extraLarge").asText();
+            }
+
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+
+
+        return imgLink;
+    }
+
+    @Override
+    public Boolean checkForNextPage(String response) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        boolean hasNextPage;
+        try {
+            JsonNode rootNode = objectMapper.readTree(response);
+            JsonNode pageNode = rootNode.path("data").path("Page").path("pageInfo").path("hasNextPage");
+
+             hasNextPage = pageNode.asBoolean();
 
 
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
 
-        return imgLink;
+        return hasNextPage;
     }
 
     @Override

@@ -17,12 +17,14 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
+import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.nio.file.attribute.UserPrincipalNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
@@ -69,6 +71,10 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Autowired
     private GetAnimeByGenreServiceImpl byGenreServiceImpl;
 
+    private ConcurrentHashMap<Long, Integer> pageCountMap = new ConcurrentHashMap<>();
+
+    private ConcurrentHashMap<Long, List<Integer>> listOfId = new ConcurrentHashMap<>();
+
     private Integer animeId;
 
     @Override
@@ -89,19 +95,31 @@ public class TelegramBot extends TelegramLongPollingBot {
             String message = update.getMessage().getText();
 
             if ("/start".equals(message)) {
+
                 botCommandService.registerUser(update.getMessage(), userRepository);
                 executeMessage(virtualKeyboardService.sendMessageNoVirtualKeyboard(update.getMessage().getChatId(), GREETING_TEXT));
 
             } else if ("/by_genre".equals(message)) {
+
+                pageCountMap.clear();
+                listOfId.clear();
+
+                ConcurrentHashMap<String, Boolean> genreOptions = byGenreServiceImpl.getGenreOption(update.getMessage().getChatId());
+                genreOptions.replaceAll((k, v) -> false);
+
                 executeMessage(genreService.sendGenreSelection(update.getMessage().getChatId()));
                 //prepareAndSendMessage(update.getMessage().getChatId(), "Recommend by genre is in development.");
             } else if ("/by_rating".equals(message)) {
+
                 executeMessage(getAnimeByRatingService.getAnimeByRatingOptions(update.getMessage().getChatId()));
                 //prepareAndSendMessage(update.getMessage().getChatId(), "Recommend by rating is in development.");
             } else if ("/keyboard".equals(message)) {
+
                 executeMessage(virtualKeyboardService.sendMessageWithVirtualKeyboard(update.getMessage().getChatId(), "Keyboard!",
                         virtualKeyboardService));
+
             } else if ("/random".equals(message)) {
+
                 String unparsedAnime = animeService.getRandomAnime(); // Get random anime
                 int animeId = animeService.getAnimeIdFromJSON(unparsedAnime);
                 String parsedAnime = animeService.parseJSONAnime(unparsedAnime); // Parse anime JSON
@@ -239,13 +257,100 @@ public class TelegramBot extends TelegramLongPollingBot {
                     executeMessage(watchlistService.addAnimeByRatingToWatchListButton(chatId, parsedAnime, animeId, "EIGHTY-HUNDRED"));
                 }
             }
-            ConcurrentHashMap<String, Boolean> genreOptions = byGenreServiceImpl.getGenreOption(chatId);
-            if (genreOptions.keySet().stream().anyMatch(callbackData::contains)) {
-                String genre = callbackData;
-                boolean isSelected = genreOptions.get(genre);
-                genreOptions.put(genre, !isSelected);
-                //byGenreServiceImpl.setGenreOptions(options);
-                executeMessage(genreService.updateGenreListOnSelect(chatId, (int) messageId, genreOptions));
+
+            updateGenreListOnSelect(callbackData, chatId, (int) messageId);
+
+
+            boolean noNextPage;
+            if (callbackData.equals("CONFIRM_GENRES")) {
+
+                int pageCount = pageCountMap.getOrDefault(chatId, 0);
+
+                ConcurrentHashMap<String, Boolean> genresToSelect = byGenreServiceImpl.getGenreOption(chatId);
+                List<String> selectedGenres = new ArrayList<>();
+
+                for (String genre : genresToSelect.keySet()) {
+                    if (genresToSelect.get(genre)) {
+                        selectedGenres.add(genre);
+                    }
+                }
+                String idForGenreSelection;
+                List<Integer> temp;
+                List<Integer> id = new ArrayList<>();
+                Random random = new Random();
+                int decider = random.nextInt(11);
+                String sort = "";
+                log.info("DECIDER1: " + decider);
+                log.info("GENRES: " + selectedGenres);
+                if (decider == 1) {
+                    sort = "SCORE_DESC";
+                } else if (decider == 2) {
+                    sort = "FAVOURITES";
+                } else if (decider == 3) {
+                    sort = "SCORE";
+                } else if (decider == 4) {
+                    sort = "POPULARITY";
+                } else if (decider == 5) {
+                    sort = "POPULARITY_DESC";
+                } else if (decider == 6) {
+                    sort = "TRENDING";
+                } else if (decider == 7) {
+                    sort = "TRENDING_DESC";
+                } else if (decider == 8) {
+                    sort = "FAVOURITES_DESC";
+                } else if (decider == 9) {
+                    sort = "POPULARITY";
+                } else if (decider == 10) {
+                    sort = "POPULARITY_DESC";
+                } else {
+                    sort = "EPISODES_DESC";
+                }
+                if (pageCount == 0) {
+                    log.info("SORT1: " + sort);
+                    pageCount = 1;
+                    idForGenreSelection = byGenreServiceImpl.getAnimeIdForGenreSelection(selectedGenres, pageCount, sort);
+                    if (idForGenreSelection.isBlank() || idForGenreSelection.isEmpty() || idForGenreSelection.equals("{\"data\":{\"Page\":{\"pageInfo\":{\"hasNextPage\":false},\"media\":[]}}}")) {
+                        String genres = String.join(", ", selectedGenres);
+                        prepareAndUpdateMessage(chatId, (int) messageId, "Masaka! There are no anime with such combination of genres: " + genres);
+                    }
+                    temp = byGenreServiceImpl.getListOfAnimeID(idForGenreSelection);
+                    id.addAll(temp);
+
+                    pageCount++;
+                    pageCountMap.put(chatId, pageCount);
+                    listOfId.put(chatId, id);
+
+                }
+                if (decider <= 10) {
+                    if (pageCount == 1) {
+                        pageCount = 2;
+                    }
+                    log.info("SORT: " + sort);
+                    idForGenreSelection = byGenreServiceImpl.getAnimeIdForGenreSelection(selectedGenres, pageCount, sort);
+                    if (animeService.checkForNextPage(idForGenreSelection)) {
+                        temp = byGenreServiceImpl.getListOfAnimeID(idForGenreSelection);
+                        listOfId.get(chatId).addAll(temp);
+
+                        pageCount++;
+                        pageCountMap.put(chatId, pageCount);
+                        //listOfId.put(chatId, id);
+
+                    }
+                }
+
+                log.info("ID: " + listOfId.get(chatId).size() + " " + listOfId);
+                log.info("PAGE COUNT: " + pageCount);
+
+                Random randomForID = new Random();
+                List<Integer> tempId = listOfId.get(chatId);
+                int index = randomForID.nextInt(tempId.size());
+                int animeId = tempId.get(index);
+                String unparsedAnime = animeService.getAnimeByID(animeId);
+                String parsedAnime = animeService.parseJSONAnime(unparsedAnime);
+                String imgLink = animeService.extractImgLink(unparsedAnime);
+                executeMessageWithImage(new SendPhoto(String.valueOf(chatId), new InputFile(imgLink)));
+                executeMessage(watchlistService.addAnimeByRatingToWatchListButton(chatId, parsedAnime, animeId, "CONFIRM_GENRES"));
+                log.info("Selected genre: " + selectedGenres);
             }
 
             if (callbackData.startsWith("ADD_ANIME_TO_WATCHLIST_BUTTON")) {
@@ -419,13 +524,19 @@ public class TelegramBot extends TelegramLongPollingBot {
             }
             for (String animeToGetDescrId : listOfIdForDescription) {
                 if (callbackData.equals(animeToGetDescrId)) {
-                    animeId = Integer.valueOf(animeToGetDescrId.replace("DESCRIPTION", ""));
+                    int animeId = Integer.parseInt(animeToGetDescrId.replace("DESCRIPTION", ""));
                     log.info("ID: " + animeId);
                     String rawDescription = animeService.getAnimeDescription(animeId);
                     int animeIdIndex = animeIdList.indexOf(animeId);
                     anime = animeList.get(animeIdIndex);
+                    String imgLink = animeService.extractImgLink(rawDescription);
                     //String parsedDescription = watchlistService.parseJSONDescription(rawDescription);
-                    executeMessage(watchlistService.parseJSONDescription(chatId, rawDescription, messageId));
+                    /*SendPhoto sendPhoto = new SendPhoto(String.valueOf(chatId), new InputFile(imgLink));
+                    EditMessageText t = watchlistService.parseJSONDescription(chatId, rawDescription, messageId);
+                    sendPhoto.setCaption(t.getText());
+                    executeMessageWithImage(sendPhoto);*/
+
+                    executeMessage(watchlistService.parseJSONDescription(chatId, rawDescription, messageId, imgLink));
                     log.info("Retrieved description:" + rawDescription);
                 }
 
@@ -435,6 +546,17 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
 
 
+    }
+
+    private void updateGenreListOnSelect(String callbackData, long chatId, int messageId) {
+        ConcurrentHashMap<String, Boolean> genreOptions = byGenreServiceImpl.getGenreOption(chatId);
+        if (genreOptions.keySet().stream().anyMatch(callbackData::contains)) {
+            String genre = callbackData;
+            boolean isSelected = genreOptions.get(genre);
+            genreOptions.put(genre, !isSelected);
+            //byGenreServiceImpl.setGenreOptions(options);
+            executeMessage(genreService.updateGenreListOnSelect(chatId, messageId, genreOptions));
+        }
     }
 
     private void executeMessageWithImage(SendPhoto sendPhoto) {

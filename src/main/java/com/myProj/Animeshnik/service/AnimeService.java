@@ -11,6 +11,10 @@ public interface AnimeService {
 
     String extractImgLink(String response);
 
+    Boolean checkForNextPage(String response);
+
+    String getAnimeByID(int id);
+
     String getRandomAnime();
 
     String getAnimeDescription(Integer animeId);
@@ -24,6 +28,8 @@ public interface AnimeService {
     String extractAnimeTitle(String anime);
 
     Integer getAnimeIdFromJSON(String unparsedAnime);
+
+    Integer getAmountOfAvailablePages(List<String> selectedGenres);
     public String test();
     String parseTest(String anime);
 
