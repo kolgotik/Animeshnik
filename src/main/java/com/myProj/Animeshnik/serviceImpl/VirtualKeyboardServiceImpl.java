@@ -19,15 +19,15 @@ public class VirtualKeyboardServiceImpl implements VirtualKeyboardService {
 
         KeyboardRow row = new KeyboardRow();
 
-        row.add("/random");
-        row.add("/by_genre");
-        row.add("/by_rating");
+        row.add("\uD83C\uDFB2 random");
+        row.add("\uD83C\uDFAD by genre");
+        row.add("⭐ by rating");
 
         rowList.add(row);
 
         row = new KeyboardRow();
 
-        row.add("/watchlist");
+        row.add("\uD83D\uDCDD watchlist");
 
         rowList.add(row);
 
