@@ -582,6 +582,97 @@ public class AnimeServiceImpl implements AnimeService {
         return result;
     }
 
+    @Override
+    public String parseJSONAnime(String anime, String imgLink) {
+
+        int id;
+        String description;
+        String title;
+        int episodes;
+        String result = "";
+        String averageScore;
+        String genres;
+        String startDate;
+        String endDate;
+
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        try {
+            JsonNode rootNode = objectMapper.readTree(anime);
+            JsonNode mediaNode = rootNode.path("data").path("Page").path("media").get(0);
+            id = mediaNode.path("id").asInt();
+            animeId = id;
+            description = mediaNode.path("description").asText()
+                    .replaceAll("<br>", "")
+                    .replaceAll("<i>", "")
+                    .replaceAll("</i>", "")
+                    .replaceAll("</br>", "")
+                    .replaceAll("<b>", "")
+                    .replaceAll("</b>", "")
+                    .replaceAll("<a href=\"", "")
+                    .replaceAll("\">", "")
+                    .replaceAll("&rsquo;", "")
+                    .replaceAll("&ldquo;", "")
+                    .replaceAll("&rdquo;", "")
+                    .replaceAll("&amp;", "")
+                    .replaceAll("<\\/I>", "")
+                    .replaceAll("</a>", "");
+
+            averageScore = String.valueOf(mediaNode.path("averageScore").asInt());
+            episodes = mediaNode.path("episodes").asInt();
+
+            JsonNode titleNode = mediaNode.path("title");
+
+            endDate = formatDate(mediaNode.path("endDate"));
+            startDate = formatDate(mediaNode.path("startDate"));
+
+
+            if (titleNode.hasNonNull("english")) {
+                title = mediaNode.path("title").path("english").asText();
+            } else {
+                title = mediaNode.path("title").path("romaji").asText();
+            }
+            if (!mediaNode.hasNonNull("description")) {
+                description = "Description is not available";
+            }
+            if (!mediaNode.hasNonNull("genres") || mediaNode.path("genres").isEmpty() || mediaNode.path("genres").isNull()) {
+                genres = "Genres are not available";
+            } else {
+                JsonNode genresNode = mediaNode.path("genres");
+                StringBuilder stringBuilder = new StringBuilder();
+                for (JsonNode genreNode : genresNode) {
+                    stringBuilder.append(genreNode.asText());
+                    stringBuilder.append(", ");
+                }
+                genres = stringBuilder.toString().replaceAll(", $", "");
+            }
+            if (mediaNode.hasNonNull("averageScore")) {
+                averageScore = averageScore + " / 100";
+            } else {
+                averageScore = "Score is not available";
+
+            }
+
+            result = "Anime title: " + title + "\n"
+                    + "\n" + "Genres: " + genres + "\n"
+                    + "\n" + "Start Date: " + startDate + "\n"
+                    + "\n" + "End Date: " + endDate + "\n"
+                    + "\n" + "Average Score: " + averageScore + "\n"
+                    + "\n" + "Episodes: " + episodes + "\n"
+                    + "\n"
+                    + "Description: " + description + "\n\n" + "press for random if bored -> /random" + "\n\n"
+                    + "\n\n" +
+                    " " + imgLink + " ";
+
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        } catch (NullPointerException e) {
+            result = "Nani?! Something went wrong... Repeat the operation.";
+            log.error("Error occurred on parsing API response: " + e.getMessage());
+        }
+
+        return result;
+    }
     public String formatDate(JsonNode dateNode) {
         String month;
         String year;

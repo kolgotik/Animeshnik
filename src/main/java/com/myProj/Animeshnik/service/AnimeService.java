@@ -33,4 +33,5 @@ public interface AnimeService {
     public String test();
     String parseTest(String anime);
 
+    String parseJSONAnime(String anime, String imgLink);
 }
