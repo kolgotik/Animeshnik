@@ -18,7 +18,6 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
-import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
 import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
@@ -146,11 +145,11 @@ public class TelegramBot extends TelegramLongPollingBot {
                 genreOptions.replaceAll((k, v) -> false);
 
                 executeMessage(genreService.sendGenreSelection(update.getMessage().getChatId()));
-                //prepareAndSendMessage(update.getMessage().getChatId(), "Recommend by genre is in development.");
+
             } else if ("/by_rating".equals(replacedMessage) || "/by_rating".equals(message)) {
 
                 executeMessage(getAnimeByRatingService.getAnimeByRatingOptions(update.getMessage().getChatId()));
-                //prepareAndSendMessage(update.getMessage().getChatId(), "Recommend by rating is in development.");
+
             } else if ("/keyboard".equals(replacedMessage) || "/keyboard".equals(message)) {
 
                 executeMessage(virtualKeyboardService.sendMessageWithVirtualKeyboard(update.getMessage().getChatId(), "Keyboard!",
@@ -169,26 +168,9 @@ public class TelegramBot extends TelegramLongPollingBot {
                 if (parsedAnime.equals("Nani?! Something went wrong... Repeat the operation.")) {
                     prepareAndSendMessage(update.getMessage().getChatId(), parsedAnime);
                 } else {
-                    //executeMessageWithImage(sendPhoto);
                     executeMessage(watchlistService.addAnimeToWatchListButton(update.getMessage().getChatId(), parsedAnime, animeId));
                 }
             }
-
-            /*else if ("/random".equals(message)) {
-                unparsedAnime = animeService.getRandomAnime();
-                String parsedAnime = animeService.parseJSONAnime(unparsedAnime);
-                String imgLink = animeService.extractImgLink(unparsedAnime);
-                SendPhoto sendPhoto = new SendPhoto();
-                sendPhoto.setChatId(String.valueOf(update.getMessage().getChatId()));
-                sendPhoto.setPhoto(new InputFile(imgLink));
-                animeId = animeService.animeId;
-                if (parsedAnime.equals("Nani?! Something went wrong... Repeat the operation.")) {
-                    prepareAndSendMessage(update.getMessage().getChatId(), parsedAnime);
-                } else {
-                    executeMessageWithImage(sendPhoto);
-                    executeMessage(watchlistService.addAnimeToWatchListButton(update.getMessage().getChatId(), parsedAnime, animeId));
-                }*/
-
 
             else if ("/watchlist".equals(replacedMessage) || "/watchlist".equals(message)) {
 
@@ -206,9 +188,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                             prepareAndSendMessage(update.getMessage().getChatId(), formattedList);
                         } else {
                             log.info("parsed watchlist: " + formattedList);
-                            //prepareAndSendMessage(update.getMessage().getChatId(), formattedList);
                             executeMessage(watchlistService.animeList(update.getMessage().getChatId(), userAnimeList, user, user.getAnimeIdList()));
-                            //executeMessageWithImage(watchlistService.animeListWithImg(update.getMessage().getChatId(), userAnimeList, user, user.getAnimeIdList()));
                         }
                     } else {
                         prepareAndSendMessage(update.getMessage().getChatId(), "There are no anime in your list. ");
@@ -245,7 +225,6 @@ public class TelegramBot extends TelegramLongPollingBot {
                 if (parsedAnime.equals("Nani?! Something went wrong... Repeat the operation.")) {
                     prepareAndSendMessage(chatId, parsedAnime);
                 } else {
-                    // executeMessageWithImage(new SendPhoto(String.valueOf(chatId), new InputFile(imgLink)));
                     executeMessage(watchlistService.addAnimeByRatingToWatchListButton(chatId, parsedAnime, animeId, "BELOW-FIFTY"));
                 }
             }
@@ -260,7 +239,6 @@ public class TelegramBot extends TelegramLongPollingBot {
                 if (parsedAnime.equals("Nani?! Something went wrong... Repeat the operation.")) {
                     prepareAndSendMessage(chatId, parsedAnime);
                 } else {
-                    //executeMessageWithImage(new SendPhoto(String.valueOf(chatId), new InputFile(imgLink)));
                     executeMessage(watchlistService.addAnimeByRatingToWatchListButton(chatId, parsedAnime, animeId, "FIFTY-SIXTY"));
                 }
             }
@@ -275,7 +253,6 @@ public class TelegramBot extends TelegramLongPollingBot {
                 if (parsedAnime.equals("Nani?! Something went wrong... Repeat the operation.")) {
                     prepareAndSendMessage(chatId, parsedAnime);
                 } else {
-                    // executeMessageWithImage(new SendPhoto(String.valueOf(chatId), new InputFile(imgLink)));
                     executeMessage(watchlistService.addAnimeByRatingToWatchListButton(chatId, parsedAnime, animeId, "SIXTY-EIGHTY"));
                 }
             }
@@ -291,7 +268,6 @@ public class TelegramBot extends TelegramLongPollingBot {
                 if (parsedAnime.equals("Nani?! Something went wrong... Repeat the operation.")) {
                     prepareAndSendMessage(chatId, parsedAnime);
                 } else {
-                    // executeMessageWithImage(new SendPhoto(String.valueOf(chatId), new InputFile(imgLink)));
                     executeMessage(watchlistService.addAnimeByRatingToWatchListButton(chatId, parsedAnime, animeId, "EIGHTY-HUNDRED"));
                 }
             }
@@ -299,7 +275,6 @@ public class TelegramBot extends TelegramLongPollingBot {
             updateGenreListOnSelect(callbackData, chatId, (int) messageId);
 
 
-            boolean noNextPage;
             if (callbackData.equals("CONFIRM_GENRES")) {
 
                 int pageCount = pageCountMap.getOrDefault(chatId, 0);
@@ -371,7 +346,6 @@ public class TelegramBot extends TelegramLongPollingBot {
 
                         pageCount++;
                         pageCountMap.put(chatId, pageCount);
-                        //listOfId.put(chatId, id);
 
                     }
                 }
@@ -386,7 +360,6 @@ public class TelegramBot extends TelegramLongPollingBot {
                 String unparsedAnime = animeService.getAnimeByID(animeId);
                 String imgLink = animeService.extractImgLink(unparsedAnime);
                 String parsedAnime = animeService.parseJSONAnime(unparsedAnime, imgLink);
-                //executeMessageWithImage(new SendPhoto(String.valueOf(chatId), new InputFile(imgLink)));
                 executeMessage(watchlistService.addAnimeByRatingToWatchListButton(chatId, parsedAnime, animeId, "CONFIRM_GENRES"));
                 log.info("Selected genre: " + selectedGenres);
             }
@@ -394,20 +367,8 @@ public class TelegramBot extends TelegramLongPollingBot {
             if (callbackData.startsWith("ADD_ANIME_TO_WATCHLIST_BUTTON")) {
 
                 animeId = Integer.valueOf(currentCallback.replace("ADD_ANIME_TO_WATCHLIST_BUTTON", ""));
-                    /*int animeIdIndex = animeIdList.indexOf(animeId);
-                    anime = animeList.get(animeIdIndex);*/
-
-
                 String titleName = update.getCallbackQuery().getMessage().getText();
-
-                    /*anime.setOverallInfo(update.getCallbackQuery().getMessage().getText());
-                    log.info("Overall anime info: " + anime.getOverallInfo());*/
-
                 anime = animeService.extractAnimeTitle(titleName);
-                //String titleForDataRetrieve = animeService.getAnimeTitleFromResponse(unparsedAnime);
-                //log.info("Title for data retrieve: " + titleForDataRetrieve);
-                //animeId = animeService.getAnimeIdFromAPI(extractedTitle);
-
 
                 if (anime.getBytes().length > 64) {
                     anime = anime.substring(0, 61) + "...";
@@ -466,7 +427,6 @@ public class TelegramBot extends TelegramLongPollingBot {
                 if (parsedAnime.equals("Nani?! Something went wrong... Repeat the operation.")) {
                     prepareAndSendMessage(chatId, parsedAnime);
                 } else {
-                    //executeMessageWithImage(new SendPhoto(String.valueOf(chatId), new InputFile(imgLink)));
                     executeMessage(watchlistService.addAnimeToWatchListButton(chatId, parsedAnime, animeId));
                 }
             }
@@ -568,12 +528,6 @@ public class TelegramBot extends TelegramLongPollingBot {
                     int animeIdIndex = animeIdList.indexOf(animeId);
                     anime = animeList.get(animeIdIndex);
                     String imgLink = animeService.extractImgLink(rawDescription);
-                    //String parsedDescription = watchlistService.parseJSONDescription(rawDescription);
-                    /*SendPhoto sendPhoto = new SendPhoto(String.valueOf(chatId), new InputFile(imgLink));
-                    EditMessageText t = watchlistService.parseJSONDescription(chatId, rawDescription, messageId);
-                    sendPhoto.setCaption(t.getText());
-                    executeMessageWithImage(sendPhoto);*/
-
                     executeMessage(watchlistService.parseJSONDescription(chatId, rawDescription, messageId, imgLink));
                     log.info("Retrieved description:" + rawDescription);
                 }
@@ -592,17 +546,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             String genre = callbackData;
             boolean isSelected = genreOptions.get(genre);
             genreOptions.put(genre, !isSelected);
-            //byGenreServiceImpl.setGenreOptions(options);
             executeMessage(genreService.updateGenreListOnSelect(chatId, messageId, genreOptions));
-        }
-    }
-
-    private void executeMessageWithImage(SendPhoto sendPhoto) {
-        try {
-            execute(sendPhoto);
-
-        } catch (TelegramApiException e) {
-            log.error("Error occurred: " + e.getMessage());
         }
     }
 
@@ -621,15 +565,6 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         } catch (TelegramApiException e) {
             log.error("Error occurred 309: " + e.getMessage());
-        }
-    }
-
-    private void executeMessage(SendPoll sendPoll) {
-        try {
-            execute(sendPoll);
-
-        } catch (TelegramApiException e) {
-            log.error("Error occurred: " + e.getMessage());
         }
     }
 

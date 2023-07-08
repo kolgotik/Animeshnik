@@ -4,9 +4,6 @@ import java.util.List;
 
 public interface AnimeService {
 
-    //void testGetAnime();
-    //String  testGetAnimeString();
-
     String parseJSONAnime(String anime);
 
     String extractImgLink(String response);

@@ -38,8 +38,6 @@ public class GetAnimeByGenreServiceImpl implements GetAnimeByGenreService {
             genreOptions.put("Drama", false);
             genreOptions.put("Ecchi", false);
             genreOptions.put("Fantasy", false);
-            //genreOptions.put("Harem", false);
-            //genreOptions.put("Historical", false);
             genreOptions.put("Mahou Shoujo", false);
             genreOptions.put("Horror", false);
             genreOptions.put("Mecha", false);
@@ -63,13 +61,11 @@ public class GetAnimeByGenreServiceImpl implements GetAnimeByGenreService {
 
         Random random = new Random();
         String url = "https://graphql.anilist.co";
-        //int randomPage = random.nextInt(2) + 1;
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("page", page);
         variables.put("genre", selectedGenres.toArray());
         variables.put("sort", sort);
-        //variables.put("tag", selectedGenres.toArray());
 
         String query = """
                 query ($genre: [String], $page: Int, $tag: [String], $sort: [MediaSort]) {
