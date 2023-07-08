@@ -1,6 +1,5 @@
 package com.myProj.Animeshnik.service;
 
-import com.myProj.Animeshnik.serviceImpl.VirtualKeyboardServiceImpl;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 
 public interface VirtualKeyboardService {
